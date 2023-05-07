@@ -82,18 +82,20 @@ user_implemented_expmap(const Eigen::Matrix<T, 6, 1> &xi) {
   double theta = w.norm();
   Eigen::Matrix<T, 3, 3> skew_symmetric_w, matR, J;
   Eigen::Matrix<T, 4, 4> mat;
-  skew_symmetric_w << 0, -w(2, 0), w(1, 0), w(2, 0), 0, -w(0, 0),
-      -w(1, 0), w(0, 0), 0;
+  skew_symmetric_w << 0, -w(2, 0), w(1, 0), w(2, 0), 0, -w(0, 0), -w(1, 0),
+      w(0, 0), 0;
 
-  matR =
-      Eigen::MatrixXd::Identity(3, 3) + sin(theta) / theta * skew_symmetric_w +
-      (1 - cos(theta)) / theta / theta * skew_symmetric_w * skew_symmetric_w;
+  matR = Eigen::MatrixXd::Identity(3, 3) +
+         sin(theta) / theta * skew_symmetric_w +
+         (1 - cos(theta)) / theta / theta * skew_symmetric_w * skew_symmetric_w;
 
-  J = Eigen::MatrixXd::Identity(3, 3) + (1 - cos(theta)) / theta / theta * skew_symmetric_w +
-      (theta - sin(theta)) / theta / theta / theta * skew_symmetric_w * skew_symmetric_w;
+  J = Eigen::MatrixXd::Identity(3, 3) +
+      (1 - cos(theta)) / theta / theta * skew_symmetric_w +
+      (theta - sin(theta)) / theta / theta / theta * skew_symmetric_w *
+          skew_symmetric_w;
 
-  mat.block(0,0,3,3) = matR;
-  mat.block(0,3,3,1) = J * v;
+  mat.block(0, 0, 3, 3) = matR;
+  mat.block(0, 3, 3, 1) = J * v;
 
   return mat;
 }
@@ -103,29 +105,29 @@ template <class T>
 Eigen::Matrix<T, 6, 1>
 user_implemented_logmap(const Eigen::Matrix<T, 4, 4> &mat) {
   // TODO SHEET 1: implement
-  
 
   Eigen::Matrix<T, 3, 1> matT, temp_vec, w, v;
-  Eigen::Matrix<T, 3, 3> matR ,J, skew_symmetric_w;
+  Eigen::Matrix<T, 3, 3> matR, J, skew_symmetric_w;
   Eigen::Matrix<T, 6, 1> xi;
 
-  matR = mat.block(0,0,3,3);
-  matT = mat.block(0,3,3,1);
+  matR = mat.block(0, 0, 3, 3);
+  matT = mat.block(0, 3, 3, 1);
   double theta = acos((matR.trace() - 1) / 2);
   temp_vec << matR(2, 1) - matR(1, 2), matR(0, 2) - matR(2, 0),
       matR(1, 0) - matR(0, 1);
   w = theta / 2 / sin(theta) * temp_vec;
 
-  skew_symmetric_w << 0, -w(2, 0), w(1, 0), w(2, 0), 0, -w(0, 0),
-      -w(1, 0), w(0, 0), 0;
+  skew_symmetric_w << 0, -w(2, 0), w(1, 0), w(2, 0), 0, -w(0, 0), -w(1, 0),
+      w(0, 0), 0;
 
-  J = Eigen::MatrixXd::Identity(3, 3) - skew_symmetric_w / 2 + 
-  (1 / theta / theta - (1 + cos(theta)) / 2 / theta / sin(theta) ) * skew_symmetric_w * skew_symmetric_w;
+  J = Eigen::MatrixXd::Identity(3, 3) - skew_symmetric_w / 2 +
+      (1 / theta / theta - (1 + cos(theta)) / 2 / theta / sin(theta)) *
+          skew_symmetric_w * skew_symmetric_w;
 
   v = J.inverse() * matT;
 
-  xi.block(0,0,3,1) = v;
-  xi.block(3,0,3,1) = w;
+  xi.block(0, 0, 3, 1) = v;
+  xi.block(3, 0, 3, 1) = w;
 
   return xi;
 }
