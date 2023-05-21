@@ -340,6 +340,8 @@ void compute_projections() {
   for (const auto& kv : calib_corners) {
     CalibCornerData ccd;
 
+    // std::cout << "id " << kv.first.cam_id << std::endl;
+
     for (size_t i = 0; i < aprilgrid.aprilgrid_corner_pos_3d.size(); i++) {
       // Transformation from body (IMU) frame to world frame
       Sophus::SE3d T_w_i = vec_T_w_i[kv.first.frame_id];
@@ -349,10 +351,12 @@ void compute_projections() {
       Eigen::Vector3d p_3d = aprilgrid.aprilgrid_corner_pos_3d[i];
 
       // TODO SHEET 2: project point
-      UNUSED(T_w_i);
-      UNUSED(T_i_c);
-      UNUSED(p_3d);
       Eigen::Vector2d p_2d;
+
+      Eigen::Vector3d p_3d_camera_frame =
+          T_i_c.inverse() * T_w_i.inverse() * p_3d;
+
+      p_2d = calib_cam.intrinsics[kv.first.cam_id]->project(p_3d_camera_frame);
 
       ccd.corners.push_back(p_2d);
     }
@@ -367,6 +371,14 @@ void optimize() {
 
   // TODO SHEET 2: setup optimization problem
 
+  /*
+  for (int i = 0; i < kNumObservations; ++i) {
+    ceres::CostFunction* cost_function =
+        new ceres::AutoDiffCostFunction<BundleAdjustmentReprojectionCostFunctor,
+  1, 1, 1>( new BundleAdjustmentReprojectionCostFunctor(data[2 * i], data[2 * i
+  + 1])); problem.AddResidualBlock(cost_function, nullptr, &m, &c);
+  }
+  */
   ceres::Solver::Options options;
   options.gradient_tolerance = 0.01 * Sophus::Constants<double>::epsilon();
   options.function_tolerance = 0.01 * Sophus::Constants<double>::epsilon();
