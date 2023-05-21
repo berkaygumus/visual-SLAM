@@ -40,8 +40,8 @@ namespace visnav {
 
 // Implement exp for SO(3)
 template <class T>
-Eigen::Matrix<T, 3, 3>
-user_implemented_expmap(const Eigen::Matrix<T, 3, 1> &xi) {
+Eigen::Matrix<T, 3, 3> user_implemented_expmap(
+    const Eigen::Matrix<T, 3, 1>& xi) {
   // TODO SHEET 1: implement
   double theta = xi.norm();
   Eigen::Matrix<T, 3, 3> skew_symmetric_xi, mat;
@@ -57,8 +57,8 @@ user_implemented_expmap(const Eigen::Matrix<T, 3, 1> &xi) {
 
 // Implement log for SO(3)
 template <class T>
-Eigen::Matrix<T, 3, 1>
-user_implemented_logmap(const Eigen::Matrix<T, 3, 3> &mat) {
+Eigen::Matrix<T, 3, 1> user_implemented_logmap(
+    const Eigen::Matrix<T, 3, 3>& mat) {
   // TODO SHEET 1: implement
   double theta = acos((mat.trace() - 1) / 2);
 
@@ -72,8 +72,8 @@ user_implemented_logmap(const Eigen::Matrix<T, 3, 3> &mat) {
 
 // Implement exp for SE(3)
 template <class T>
-Eigen::Matrix<T, 4, 4>
-user_implemented_expmap(const Eigen::Matrix<T, 6, 1> &xi) {
+Eigen::Matrix<T, 4, 4> user_implemented_expmap(
+    const Eigen::Matrix<T, 6, 1>& xi) {
   // TODO SHEET 1: implement
   Eigen::Matrix<T, 3, 1> w, v;
   w = xi.tail(3);
@@ -102,8 +102,8 @@ user_implemented_expmap(const Eigen::Matrix<T, 6, 1> &xi) {
 
 // Implement log for SE(3)
 template <class T>
-Eigen::Matrix<T, 6, 1>
-user_implemented_logmap(const Eigen::Matrix<T, 4, 4> &mat) {
+Eigen::Matrix<T, 6, 1> user_implemented_logmap(
+    const Eigen::Matrix<T, 4, 4>& mat) {
   // TODO SHEET 1: implement
 
   Eigen::Matrix<T, 3, 1> matT, temp_vec, w, v;
@@ -132,4 +132,4 @@ user_implemented_logmap(const Eigen::Matrix<T, 4, 4> &mat) {
   return xi;
 }
 
-} // namespace visnav
+}  // namespace visnav
