@@ -369,7 +369,7 @@ void optimize() {
   // Build the problem.
   ceres::Problem problem;
 
-  //std::cout << "problem created " << std::endl;
+  // std::cout << "problem created " << std::endl;
 
   // TODO SHEET 2: setup optimization problem
   /*
@@ -400,21 +400,21 @@ void optimize() {
                               new Sophus::test::LocalParameterizationSE3);
   }
 
-  //std::cout << "Tic_i added " << std::endl;
+  // std::cout << "Tic_i added " << std::endl;
 
   // the first cam transformation is fixed
   if (calib_cam.T_i_c.size() > 0) {
     problem.SetParameterBlockConstant(calib_cam.T_i_c[0].data());
   }
 
-  //std::cout << "SetParameterBlockConstant" << std::endl;
+  // std::cout << "SetParameterBlockConstant" << std::endl;
 
   // calib_cam.T_i_c[i] camera pose for each camera i
   for (auto intrinsics_i : calib_cam.intrinsics) {
     problem.AddParameterBlock(intrinsics_i->data(), 8);
   }
 
-  //std::cout << "intrinsics_i added " << std::endl;
+  // std::cout << "intrinsics_i added " << std::endl;
 
   // vec_T_w_i[i] camera pose for each camera i
   for (Sophus::SE3d& T_w_i : vec_T_w_i) {
@@ -422,7 +422,7 @@ void optimize() {
                               new Sophus::test::LocalParameterizationSE3);
   }
 
-  //std::cout << "T_w_i added " << std::endl;
+  // std::cout << "T_w_i added " << std::endl;
 
   // map<FrameCamId, CalibCornerData> calib_corners;
   // for each frame with FrameCamId
@@ -436,16 +436,16 @@ void optimize() {
     // intrinsics:
     // Transformation from body (IMU) frame to world frame
     double* intrinsics_i = calib_cam.intrinsics[kv.first.cam_id]->data();
-    //std::cout << "intrinsics_i added " << std::endl;
+    // std::cout << "intrinsics_i added " << std::endl;
     // Transformation from camera to body (IMU) frame
     Sophus::SE3d& T_i_c = calib_cam.T_i_c[kv.first.cam_id];
-    //std::cout << "T_i_c added " << std::endl;
+    // std::cout << "T_i_c added " << std::endl;
 
     // extrinsics:
     // Transformation from body (IMU) frame to world frame (world frame is april
     // board frame?)
     Sophus::SE3d& T_w_i = vec_T_w_i[kv.first.frame_id];
-    //std::cout << "extrinsics added " << std::endl;
+    // std::cout << "extrinsics added " << std::endl;
 
     // for each 2d detection and corresponding 3d point
     Eigen::Vector2d p_2d;  // detected 2d point
@@ -453,19 +453,19 @@ void optimize() {
     int point_id;          // id to take 3d position from the aprilgrid
     for (size_t i = 0; i < kv.second.corners.size(); i++) {
       point_id = kv.second.corner_ids[i];
-      //std::cout << "point_id added " << std::endl;
+      // std::cout << "point_id added " << std::endl;
       p_2d = kv.second.corners[i];
-      //std::cout << "p_2d added " << std::endl;
+      // std::cout << "p_2d added " << std::endl;
       p_3d = aprilgrid.aprilgrid_corner_pos_3d[point_id];
-      //std::cout << "p_3d added " << std::endl;
+      // std::cout << "p_3d added " << std::endl;
       ceres::CostFunction* cost_function =
           new ceres::AutoDiffCostFunction<visnav::ReprojectionCostFunctor, 2, 7,
                                           7, 8>(
               new visnav::ReprojectionCostFunctor(p_2d, p_3d, cam_model));
-      //std::cout << "cost_function added " << std::endl;
+      // std::cout << "cost_function added " << std::endl;
       problem.AddResidualBlock(cost_function, nullptr, T_w_i.data(),
                                T_i_c.data(), intrinsics_i);
-      //std::cout << "AddResidualBlock added " << std::endl;
+      // std::cout << "AddResidualBlock added " << std::endl;
     }
   }
 
