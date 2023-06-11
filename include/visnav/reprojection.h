@@ -62,12 +62,14 @@ struct ReprojectionCostFunctor {
         AbstractCamera<T>::from_data(cam_model, sIntr);
 
     // TODO SHEET 2: implement the rest of the functor
-    const Eigen::Vector2d& p_2d_projection =
-        cam->project(T_i_c.inverse() * T_w_i.inverse() * p_3d);
+    // Eigen::Matrix<T, 2, 1> //working
+    // const Eigen::Vector2d& p_2d_projection = // TODO: not working, compile
+    // error ?
+    //    cam->project(T_i_c.inverse() * T_w_i.inverse() * p_3d);
 
-    residuals[0] = p_2d[0] - p_2d_projection[0];
-    residuals[1] = p_2d[1] - p_2d_projection[1];
-    // residuals = p_2d - p_2d_projection;
+    // residuals[0] = p_2d[0] - p_2d_projection[0];
+    // residuals[1] = p_2d[1] - p_2d_projection[1];
+    residuals = p_2d - cam->project(T_i_c.inverse() * T_w_i.inverse() * p_3d);
 
     return true;
   }
