@@ -191,9 +191,9 @@ void computeAngles(const pangolin::ManagedImage<uint8_t>& img_raw,
           }
         }
       }
-      std::cout << "m10 " << i << " " << m10 << " " << m01 << std::endl;
+      // std::cout << "m10 " << i << " " << m10 << " " << m01 << std::endl;
       angle = atan2(m01, m10);
-      std::cout << "angle " << i << " " << angle << std::endl;
+      // std::cout << "angle " << i << " " << angle << std::endl;
     }
 
     kd.corner_angles[i] = angle;
@@ -214,10 +214,23 @@ void computeDescriptors(const pangolin::ManagedImage<uint8_t>& img_raw,
     const int cy = p[1];
 
     // TODO SHEET 3: compute descriptor
-    UNUSED(img_raw);
-    UNUSED(angle);
-    UNUSED(cx);
-    UNUSED(cy);
+    Eigen::Matrix2d Rot;
+    Eigen::Vector2d pa, pb, pa_prime, pb_prime;
+    Rot << cos(angle), -sin(angle), sin(angle), cos(angle);
+    // TODO: SHORT WAY?
+    for (size_t di = 0; di < 256; di++) {
+      pa << pattern_31_x_a[di], pattern_31_y_a[di];
+      pb << pattern_31_x_b[di], pattern_31_y_b[di];
+      pa_prime = Rot * pa;
+      pb_prime = Rot * pb;
+
+      if (img_raw(cx + round(pa_prime[0]), cy + round(pa_prime[1])) <
+          img_raw(cx + round(pb_prime[0]), cy + round(pb_prime[1]))) {
+        descriptor[di] = 1;
+      } else {
+        descriptor[di] = 0;
+      }
+    }
 
     kd.corner_descriptors[i] = descriptor;
   }
