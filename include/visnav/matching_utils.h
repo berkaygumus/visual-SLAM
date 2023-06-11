@@ -53,9 +53,11 @@ void computeEssential(const Sophus::SE3d& T_0_1, Eigen::Matrix3d& E) {
   const Eigen::Matrix3d R_0_1 = T_0_1.rotationMatrix();
 
   // TODO SHEET 3: compute essential matrix
-  UNUSED(E);
-  UNUSED(t_0_1);
-  UNUSED(R_0_1);
+  Eigen::Matrix3d T_skew;
+  T_skew << 0, -t_0_1[2], t_0_1[1], t_0_1[2], 0, -t_0_1[0], -t_0_1[1], t_0_1[0],
+      0;
+
+  E = T_skew * R_0_1;
 }
 
 void findInliersEssential(const KeypointsData& kd1, const KeypointsData& kd2,
