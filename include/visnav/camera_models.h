@@ -438,8 +438,8 @@ class KannalaBrandt4Camera : public AbstractCamera<Scalar> {
     const Scalar& mx = (u - cx) / fx;
     const Scalar& my = (v - cy) / fy;
     const Scalar& ru = sqrt(mx * mx + my * my);
-    std::cout << mx << " " << my << " " << mx * mx + my * my << " "
-              << sqrt(mx * mx + my * my) << " " << ru << std::endl;
+    // std::cout << mx << " " << my << " " << mx * mx + my * my << " "
+    //          << sqrt(mx * mx + my * my) << " " << ru << std::endl;
     // f(theta) =  d(theta)  - ru
     // f'(theta) = d'(theta)
     // we are looking for the roots of f function

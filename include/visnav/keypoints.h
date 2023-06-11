@@ -251,11 +251,113 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
   matches.clear();
 
   // TODO SHEET 3: match features
-  UNUSED(corner_descriptors_1);
-  UNUSED(corner_descriptors_2);
-  UNUSED(matches);
-  UNUSED(threshold);
-  UNUSED(dist_2_best);
+  // !!! VERY BAD IMPLEMENTATION TODO: CHANGE
+  std::vector<std::pair<int, int>> matches1, matches2;
+  for (size_t descriptor1 = 0; descriptor1 < corner_descriptors_1.size();
+       descriptor1++) {
+    std::bitset<256> diff_vector;
+    int best_match = -1;
+    int second_match;
+    size_t dist_best_match = 256;
+    size_t dist_second_match = 256;
+
+    for (size_t descriptor2 = 0; descriptor2 < corner_descriptors_2.size();
+         descriptor2++) {
+      // std::cout << "descriptor1 " << corner_descriptors_1[descriptor1] <<
+      // std::endl; std::cout << "descriptor2 " <<
+      // corner_descriptors_2[descriptor2] << std::endl;
+      diff_vector =
+          corner_descriptors_1[descriptor1] ^ corner_descriptors_2[descriptor2];
+      // std::cout << "diff_vector " << diff_vector << " " <<
+      // diff_vector.count() << std::endl;
+      if (diff_vector.count() < dist_best_match) {
+        second_match = best_match;
+        dist_second_match = dist_best_match;
+
+        best_match = int(descriptor2);
+        dist_best_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+
+      } else if (diff_vector.count() < dist_second_match) {
+        second_match = int(descriptor2);
+        dist_second_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+      }
+    }
+
+    // std::cout << "dist_best_match " << dist_best_match << " "
+    //          << dist_second_match << std::endl;
+
+    if (int(dist_best_match) < threshold &&
+        dist_2_best * int(dist_best_match) <= int(dist_second_match)) {
+      // std::cout << "added " << dist_best_match << " " << dist_second_match
+      //          << " dist_2_best " << dist_2_best << " threshold " <<
+      //          threshold
+      //          << std::endl;
+      matches1.push_back(std::pair<int, int>(int(descriptor1), best_match));
+    }
+  }
+
+  for (size_t descriptor2 = 0; descriptor2 < corner_descriptors_2.size();
+       descriptor2++) {
+    std::bitset<256> diff_vector;
+    int best_match = -1;
+    int second_match;
+    size_t dist_best_match = 256;
+    size_t dist_second_match = 256;
+
+    for (size_t descriptor1 = 0; descriptor1 < corner_descriptors_1.size();
+         descriptor1++) {
+      // std::cout << "descriptor1 " << corner_descriptors_1[descriptor1] <<
+      // std::endl; std::cout << "descriptor2 " <<
+      // corner_descriptors_2[descriptor2] << std::endl;
+      diff_vector =
+          corner_descriptors_1[descriptor1] ^ corner_descriptors_2[descriptor2];
+      // std::cout << "diff_vector " << diff_vector << " " <<
+      // diff_vector.count() << std::endl;
+      if (diff_vector.count() < dist_best_match) {
+        second_match = best_match;
+        dist_second_match = dist_best_match;
+
+        best_match = int(descriptor1);
+        dist_best_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+
+      } else if (diff_vector.count() < dist_second_match) {
+        second_match = int(descriptor1);
+        dist_second_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+      }
+    }
+
+    // std::cout << "dist_best_match " << dist_best_match << " "
+    //          << dist_second_match << std::endl;
+
+    if (int(dist_best_match) < threshold &&
+        dist_2_best * int(dist_best_match) <= int(dist_second_match)) {
+      // std::cout << "added " << dist_best_match << " " << dist_second_match
+      //          << " dist_2_best " << dist_2_best << " threshold " <<
+      //          threshold
+      //          << std::endl;
+      matches2.push_back(std::pair<int, int>(best_match, int(descriptor2)));
+    }
+  }
+
+  for (auto match1 : matches1) {
+    for (auto match2 : matches2) {
+      if (match1.first == match2.first && match1.second == match2.second) {
+        matches.push_back(std::pair<int, int>(match1.first, match1.second));
+      }
+    }
+  }
 }
 
 }  // namespace visnav
