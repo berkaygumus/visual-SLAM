@@ -162,9 +162,38 @@ void computeAngles(const pangolin::ManagedImage<uint8_t>& img_raw,
 
     if (rotate_features) {
       // TODO SHEET 3: compute angle
-      UNUSED(img_raw);
-      UNUSED(cx);
-      UNUSED(cy);
+      // TODO: BETTER WAY instead of for loops
+      double m01 = 0;
+      double m10 = 0;
+      int x_dx, y_dy;
+      for (int dx = -15; dx < 16; dx++) {
+        for (int dy = -15; dy < 16; dy++) {
+          if (dx * dx + dy * dy <= 225) {
+            x_dx = cx + dx;
+            y_dy = cy + dy;
+            // std::cout << "x_dx " << x_dx << " " << y_dy << std::endl;
+            if (img_raw.InBounds(x_dx, y_dy)) {
+              // if(x_dx >= 0 && y_dy >= 0 && x_dx < img_raw.h && y_dy <
+              // img_raw.w ){ std::cout << "m10 " << m10 << " " << m01 <<
+              // std::endl;
+              m10 = m10 + dx * img_raw(x_dx, y_dy);
+              m01 = m01 + dy * img_raw(x_dx, y_dy);
+              // std::cout << "m10 " << m10 << " " << m01 << std::endl;
+              // std::cout << "intensity " <<
+              // unsigned(image.at<uint8_t>(x_dx,y_dy)) << std::endl; std::cout
+              // << "intensity img_raw " << unsigned(img_raw(x_dx,y_dy)) <<
+              // std::endl;
+
+              // std::cout << " in limit " << std::endl;
+              // std::cout << "x_dx " << x_dx << " " << y_dy << std::endl;
+              // std::cout << "dx " << dx << " " << dy << std::endl;
+            }
+          }
+        }
+      }
+      std::cout << "m10 " << i << " " << m10 << " " << m01 << std::endl;
+      angle = atan2(m01, m10);
+      std::cout << "angle " << i << " " << angle << std::endl;
     }
 
     kd.corner_angles[i] = angle;
