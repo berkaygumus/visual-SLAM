@@ -177,6 +177,6 @@ void findInliersRansac(const KeypointsData& kd1, const KeypointsData& kd2,
   // md.T_i_j.setRotationMatrix(nonlinear_transformation.block(0, 0, 3, 3));
   Eigen::Vector3d t12 = nonlinear_transformation.block(0, 3, 3, 1);
   Eigen::Matrix3d R12 = nonlinear_transformation.block(0, 0, 3, 3);
-  md.T_i_j = Sophus::SE3d(R12, t12);
+  md.T_i_j = Sophus::SE3d(R12, t12.normalized());
 }
 }  // namespace visnav
