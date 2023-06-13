@@ -49,13 +49,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace visnav {
 
 void computeEssential(const Sophus::SE3d& T_0_1, Eigen::Matrix3d& E) {
-  const Eigen::Vector3d t_0_1 = T_0_1.translation();
+  const Eigen::Vector3d t_0_1 = T_0_1.translation().normalized();
   const Eigen::Matrix3d R_0_1 = T_0_1.rotationMatrix();
 
   // TODO SHEET 3: compute essential matrix
   Eigen::Matrix3d T_skew;
-  T_skew << 0, -t_0_1[2], t_0_1[1], t_0_1[2], 0, -t_0_1[0], -t_0_1[1], t_0_1[0],
-      0;
+  T_skew << 0, -t_0_1[2], t_0_1[1], 
+        t_0_1[2], 0, -t_0_1[0], 
+        -t_0_1[1], t_0_1[0],  0;
 
   E = T_skew * R_0_1;
 }
@@ -72,12 +73,15 @@ void findInliersEssential(const KeypointsData& kd1, const KeypointsData& kd2,
     const Eigen::Vector2d p1_2d = kd2.corners[md.matches[j].second];
 
     // TODO SHEET 3: determine inliers and store in md.inliers
-    UNUSED(cam1);
-    UNUSED(cam2);
-    UNUSED(E);
-    UNUSED(epipolar_error_threshold);
-    UNUSED(p0_2d);
-    UNUSED(p1_2d);
+    const Eigen::Vector3d p0_3d = cam1->unproject(p0_2d);
+    const Eigen::Vector3d p1_3d = cam2->unproject(p1_2d);
+
+    if(abs(p0_3d.transpose() * E * p1_3d) <= epipolar_error_threshold){
+      //std::cout << " epipolar " << abs(p0_3d.transpose() * E * p1_3d) << " " << epipolar_error_threshold << std::endl;
+      md.inliers.emplace_back(std::pair<int, int>(md.matches[j].first, md.matches[j].second));
+    }
+
+
   }
 }
 
