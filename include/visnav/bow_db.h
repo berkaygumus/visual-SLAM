@@ -49,8 +49,15 @@ class BowDatabase {
   inline void insert(const FrameCamId& fcid, const BowVector& bow_vector) {
     // TODO SHEET 3: add a bow_vector that corresponds to frame fcid to the
     // inverted index. You can assume the image hasn't been added before.
-    UNUSED(fcid);
-    UNUSED(bow_vector);
+    // using BowDBInverseIndexConcurrent = tbb::concurrent_unordered_map<
+    // WordId, tbb::concurrent_vector<std::pair<FrameCamId, WordValue>>>;
+
+    for (auto bow : bow_vector) {
+      inverted_index.insert(std::make_pair(
+          bow.first,
+          tbb::concurrent_vector<std::pair<FrameCamId, WordValue>>()));
+      inverted_index[bow.first].push_back(std::make_pair(fcid, bow.second));
+    }
   }
 
   inline void query(const BowVector& bow_vector, size_t num_results,
