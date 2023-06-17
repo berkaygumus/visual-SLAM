@@ -67,9 +67,60 @@ class BowDatabase {
     // to accumulate scores and std::partial_sort for getting the closest
     // results. You should use L1 difference as the distance measure. You can
     // assume that BoW descripors are L1 normalized.
-    UNUSED(bow_vector);
-    UNUSED(num_results);
-    UNUSED(results);
+
+    std::unordered_map<FrameCamId, double>
+        images_dist_map;  // distance map for each FrameCamId
+
+    // BowDBInverseIndexConcurrent = tbb::concurrent_unordered_map<
+    // WordId, tbb::concurrent_vector<std::pair<FrameCamId, WordValue>>>;
+
+    // for each pair<visnav::WordId, visnav::WordValue>
+    for (auto bow : bow_vector) {
+      // for each FrameCamId in the word
+      for (auto frameid_weight : inverted_index.at(bow.first)) {
+        if (images_dist_map.find(frameid_weight.first) ==
+            images_dist_map.end()) {
+          images_dist_map[frameid_weight.first] =
+              2 + std::abs(bow.second - frameid_weight.second) -
+              std::abs(bow.second) - std::abs(frameid_weight.second);
+          std::cout << " new key" << std::endl;
+        } else {
+          images_dist_map[frameid_weight.first] +=
+              std::abs(bow.second - frameid_weight.second) -
+              std::abs(bow.second) - std::abs(frameid_weight.second);
+          std::cout << " existing key" << std::endl;
+        }
+      }
+    }
+
+    std::cout << " map size " << images_dist_map.size() << std::endl;
+    int i = 0;
+    for (auto image_dist : images_dist_map) {
+      std::cout << "image_dist " << i++ << " " << image_dist.first << " "
+                << image_dist.second << std::endl;
+    }
+
+    std::vector<std::pair<visnav::FrameCamId, double>> images_dist_vec;
+    for (auto image_dist : images_dist_map) {
+      images_dist_vec.push_back(std::pair<visnav::FrameCamId, double>(
+          image_dist.first, image_dist.second));
+    }
+
+    std::sort(images_dist_vec.begin(), images_dist_vec.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    size_t j = 0;
+    for (auto image_dist : images_dist_vec) {
+      std::cout << "image_dist " << j << " " << image_dist.first << " "
+                << image_dist.second << std::endl;
+      if (j < num_results) {
+        results.push_back(image_dist);
+      }
+      j++;
+    }
+
+    // std::partial_sort(images_dist_map.begin(), images_dist_map.begin() + 1,
+    // images_dist_map.end(), comparison_function);
   }
 
   void clear() { inverted_index.clear(); }
