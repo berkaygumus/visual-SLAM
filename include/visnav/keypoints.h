@@ -257,7 +257,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
        descriptor1++) {
     std::bitset<256> diff_vector;
     int best_match = -1;
-    int second_match;
+    //int second_match;
     size_t dist_best_match = 256;
     size_t dist_second_match = 256;
 
@@ -271,7 +271,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
       // std::cout << "diff_vector " << diff_vector << " " <<
       // diff_vector.count() << std::endl;
       if (diff_vector.count() < dist_best_match) {
-        second_match = best_match;
+        //second_match = best_match;
         dist_second_match = dist_best_match;
 
         best_match = int(descriptor2);
@@ -281,7 +281,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
         //          << dist_second_match << std::endl;
 
       } else if (diff_vector.count() < dist_second_match) {
-        second_match = int(descriptor2);
+        //second_match = int(descriptor2);
         dist_second_match = diff_vector.count();
 
         // std::cout << "dist_best_match " << dist_best_match << " "
@@ -306,7 +306,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
        descriptor2++) {
     std::bitset<256> diff_vector;
     int best_match = -1;
-    int second_match;
+    //int second_match;
     size_t dist_best_match = 256;
     size_t dist_second_match = 256;
 
@@ -320,7 +320,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
       // std::cout << "diff_vector " << diff_vector << " " <<
       // diff_vector.count() << std::endl;
       if (diff_vector.count() < dist_best_match) {
-        second_match = best_match;
+        //second_match = best_match;
         dist_second_match = dist_best_match;
 
         best_match = int(descriptor1);
@@ -330,7 +330,7 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
         //          << dist_second_match << std::endl;
 
       } else if (diff_vector.count() < dist_second_match) {
-        second_match = int(descriptor1);
+        //second_match = int(descriptor1);
         dist_second_match = diff_vector.count();
 
         // std::cout << "dist_best_match " << dist_best_match << " "
