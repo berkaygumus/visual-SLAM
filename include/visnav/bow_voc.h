@@ -102,7 +102,32 @@ class BowVocabulary {
     // TODO SHEET 3: transform the entire vector of features from an image to
     // the BoW representation (you can use transformFeatureToWord function). Use
     // L1 norm to normalize the resulting BoW vector.
-    UNUSED(features);
+    // std::cout << " bow vector " << v.size() << std::endl;
+
+    WordId word_id;
+    WordValue weight;
+    WordValue sum_weight = 0;
+    std::vector<WordId> key_of_pairs;
+
+    for (auto feature : features) {
+      transformFeatureToWord(feature, word_id, weight);
+      if (weight == 0) {
+        continue;
+      }
+      sum_weight += weight;
+      auto it = std::find(key_of_pairs.begin(), key_of_pairs.end(), word_id);
+
+      if (it != key_of_pairs.end()) {
+        v[std::distance(key_of_pairs.begin(), it)].second += weight;
+      } else {
+        key_of_pairs.push_back(word_id);
+        v.push_back(std::pair<WordId, WordValue>(word_id, weight));
+      }
+    }
+
+    for (auto& v_pair : v) {
+      v_pair.second /= sum_weight;
+    }
   }
 
   void save(const std::string& filename) const {
