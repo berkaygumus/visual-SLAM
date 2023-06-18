@@ -87,23 +87,24 @@ class BowDatabase {
           images_dist_map[frameid_weight.first] =
               2 + std::abs(bow.second - frameid_weight.second) -
               std::abs(bow.second) - std::abs(frameid_weight.second);
-          std::cout << " new key" << std::endl;
+          // std::cout << " new key" << std::endl;
         } else {
           images_dist_map[frameid_weight.first] +=
               std::abs(bow.second - frameid_weight.second) -
               std::abs(bow.second) - std::abs(frameid_weight.second);
-          std::cout << " existing key" << std::endl;
+          // std::cout << " existing key" << std::endl;
         }
       }
     }
 
+    /*
     std::cout << " map size " << images_dist_map.size() << std::endl;
     int i = 0;
     for (auto image_dist : images_dist_map) {
       std::cout << "image_dist " << i++ << " " << image_dist.first << " "
                 << image_dist.second << std::endl;
     }
-
+    */
     std::vector<std::pair<visnav::FrameCamId, double>> images_dist_vec;
     for (auto image_dist : images_dist_map) {
       images_dist_vec.push_back(std::pair<visnav::FrameCamId, double>(
@@ -115,10 +116,12 @@ class BowDatabase {
 
     size_t j = 0;
     for (auto image_dist : images_dist_vec) {
-      std::cout << "image_dist " << j << " " << image_dist.first << " "
-                << image_dist.second << std::endl;
+      // std::cout << "image_dist " << j << " " << image_dist.first << " "
+      //          << image_dist.second << std::endl;
       if (j < num_results) {
         results.push_back(image_dist);
+      } else {
+        break;
       }
       j++;
     }
