@@ -76,7 +76,11 @@ class BowDatabase {
 
     // for each pair<visnav::WordId, visnav::WordValue>
     for (auto bow : bow_vector) {
+      // std::cout << inverted_index.size()  << " " <<  bow.first << std::endl;
       // for each FrameCamId in the word
+      if (inverted_index.find(bow.first) == inverted_index.end()) {
+        continue;
+      }
       for (auto frameid_weight : inverted_index.at(bow.first)) {
         if (images_dist_map.find(frameid_weight.first) ==
             images_dist_map.end()) {
