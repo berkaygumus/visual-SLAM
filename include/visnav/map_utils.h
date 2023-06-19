@@ -168,11 +168,106 @@ bool initialize_scene_from_stereo_pair(const FrameCamId& fcid0,
   }
 
   // TODO SHEET 4: Initialize scene (add initial cameras and landmarks)
-  UNUSED(calib_cam);
-  UNUSED(feature_corners);
-  UNUSED(feature_tracks);
-  UNUSED(cameras);
-  UNUSED(landmarks);
+  Camera cam0, cam1;
+  cam0.T_w_c = calib_cam.T_i_c[fcid0.cam_id];  // identity
+  cam1.T_w_c = calib_cam.T_i_c[fcid1.cam_id];  // T from stereo calibration
+  cameras[fcid0] = cam0;
+  cameras[fcid1] = cam1;
+  
+
+  std::cout << " feature_tracks " << feature_tracks.size() << std::endl;
+  std::cout << " feature_corners " << feature_corners.size() << std::endl;
+
+  /// Feature tracks are collections of {ImageId => FeatureId}.
+  /// I.e. a collection of all images that observed this feature and the
+  /// corresponding feature index in that image.
+  // using FeatureTrack = std::map<FrameCamId, FeatureId>;
+  /// FeatureTracks is a collection {TrackId => FeatureTrack}
+  // using FeatureTracks = std::unordered_map<TrackId, FeatureTrack>;
+
+  // shared_track_ids will contain all track ids shared between the two images,
+  // including existing landmarks
+  std::vector<TrackId> shared_track_ids;
+
+  // find shared feature tracks
+  const std::set<FrameCamId> fcids = {fcid0, fcid1};
+  if (!GetTracksInImages(fcids, feature_tracks, shared_track_ids)) {
+    return 0;
+  }
+
+  std::cout << " shared size " << shared_track_ids.size() << std::endl;
+ 
+  int num = 0;
+
+  //for (auto f_track : feature_tracks) {
+  for (auto shared_track_id : shared_track_ids) {
+    //std::pair<const visnav::TrackId, visnav::FeatureTrack> f_track
+    // f_track.second[fcid0] featureID of the landmark in fcid0 and f_track
+    // feature_corners[fcid0].corners[f_track.second[fcid0]] is 2d point in the
+    // image
+
+    //f_track.second
+    feature_tracks.at(shared_track_id).at(fcid0);
+
+    //f_track.first
+    shared_track_id;
+
+    Landmark l;
+    //l.obs.insert({fcid0, f_track.second[fcid0]});
+    //l.obs.insert({fcid1, f_track.second[fcid1]});
+    l.obs.insert({fcid0, feature_tracks.at(shared_track_id).at(fcid0)});
+    l.obs.insert({fcid1, feature_tracks.at(shared_track_id).at(fcid1)});
+    // calib_cam.intrinsics[0] camera0
+
+    opengv::bearingVector_t p0_3d = calib_cam.intrinsics[0]->unproject(
+        feature_corners.at(fcid0).corners[feature_tracks.at(shared_track_id).at(fcid0)]);
+    opengv::bearingVector_t p1_3d = calib_cam.intrinsics[1]->unproject(
+        feature_corners.at(fcid1).corners[feature_tracks.at(shared_track_id).at(fcid1)]);
+
+    opengv::bearingVectors_t p0_3d_vector, p1_3d_vector;
+    p0_3d_vector.push_back(p0_3d);
+    p1_3d_vector.push_back(p1_3d);
+
+    // Landmarks = std::unordered_map<TrackId, Landmark>;
+    // if()
+
+    // create a central relative adapter
+    // (immediately pass translation and rotation)
+    /*
+      CentralRelativeAdapter(
+      const bearingVectors_t & bearingVectors1,
+      const bearingVectors_t & bearingVectors2,
+      const translation_t & t12,
+      const rotation_t & R12 );
+      */
+
+    Eigen::Matrix3d rotation = cam1.T_w_c.rotationMatrix().matrix();
+    Eigen::Vector3d translation = cam1.T_w_c.translation().matrix();
+
+    opengv::relative_pose::CentralRelativeAdapter adapter(
+        p0_3d_vector, p1_3d_vector, translation, rotation);
+
+    size_t index;
+
+    // run method 1
+    Eigen::Vector3d point = opengv::triangulation::triangulate(adapter, index);
+
+    l.p = point;
+
+    // f_track.second feature track
+    landmarks[shared_track_id] = l;
+
+    std::cout << " TrackId " << num << " " << shared_track_id << "  " << std::endl;
+    for (auto f : feature_tracks.at(shared_track_id)) {
+      std::cout << "FeatureTrack  " << f.first << " " << f.second << std::endl;
+    }
+  }
+
+  // UNUSED(calib_cam);
+  // UNUSED(feature_corners);
+  // UNUSED(feature_tracks);
+  // UNUSED(cameras);
+  // UNUSED(landmarks);
 
   return true;
 }
