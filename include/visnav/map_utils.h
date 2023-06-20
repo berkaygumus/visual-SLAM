@@ -295,14 +295,64 @@ void localize_camera(
   inlier_track_ids.clear();
 
   // TODO SHEET 4: Localize a new image in a given map
-  UNUSED(fcid);
-  UNUSED(shared_track_ids);
-  UNUSED(calib_cam);
-  UNUSED(feature_corners);
-  UNUSED(feature_tracks);
-  UNUSED(landmarks);
-  UNUSED(T_w_c);
-  UNUSED(reprojection_error_pnp_inlier_threshold_pixel);
+  // double fx = calib_cam.intrinsics[fcid.cam_id]->getParam()[0];
+  // double fy = calib_cam.intrinsics[fcid.cam_id]->getParam()[1];
+  // std::cout << " focal " << fx << " " << fy << std::endl;
+  // 350 - 351
+  double f = 500;  // fx
+
+  double threshold_ransac =
+      1.0 - cos(atan(reprojection_error_pnp_inlier_threshold_pixel / f));
+
+  opengv::bearingVectors_t bearingVectors;
+  opengv::points_t points;
+
+  for (auto shared_track_id : shared_track_ids) {
+    // beam from cam to landmark
+    opengv::bearingVector_t beam_3d =
+        calib_cam.intrinsics[fcid.cam_id]->unproject(
+            feature_corners.at(fcid)
+                .corners[feature_tracks.at(shared_track_id).at(fcid)]);
+
+    // point wrt world
+    bearingVectors.push_back(beam_3d);
+    opengv::point_t point = landmarks.at(shared_track_id).p;
+    points.push_back(point);
+  }
+
+  // https://github.com/laurentkneip/opengv/blob/master/test/test_absolute_pose_sac.cpp#L94
+  // create the central adapter
+  opengv::absolute_pose::CentralAbsoluteAdapter adapter(bearingVectors, points);
+  // create a Ransac object
+  opengv::sac::Ransac<
+      opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem>
+      ransac;
+  // create an AbsolutePoseSacProblem
+  // (algorithm is selectable: KNEIP, GAO, or EPNP)
+  std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem>
+      absposeproblem_ptr(
+          new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(
+              adapter, opengv::sac_problems::absolute_pose::
+                           AbsolutePoseSacProblem::KNEIP));
+  // run ransac
+  ransac.sac_model_ = absposeproblem_ptr;
+  ransac.threshold_ = threshold_ransac;
+  ransac.max_iterations_ = 1000;  // maxIterations;
+  ransac.computeModel();
+
+  //TODO: refine model with inliers?
+
+  // get the result
+  opengv::transformation_t best_transformation = ransac.model_coefficients_;
+
+  Eigen::Vector3d t12 = best_transformation.block(0, 3, 3, 1);
+  Eigen::Matrix3d R12 = best_transformation.block(0, 0, 3, 3);
+  T_w_c = Sophus::SE3d(R12, t12);
+
+  // inlier_track_ids <- ransac.inliers_;
+  for (auto inlier_index : ransac.inliers_) {
+    inlier_track_ids.push_back(shared_track_ids[inlier_index]);
+  }
 }
 
 struct BundleAdjustmentOptions {
