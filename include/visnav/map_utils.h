@@ -386,12 +386,97 @@ void bundle_adjustment(const Corners& feature_corners,
   ceres::Problem problem;
 
   // TODO SHEET 4: Setup optimization problem
-  UNUSED(feature_corners);
-  UNUSED(options);
-  UNUSED(fixed_cameras);
-  UNUSED(calib_cam);
-  UNUSED(cameras);
-  UNUSED(landmarks);
+
+  // similar to calibration.cpp
+
+  // CAMERA EXTRINSCIS //
+
+  // camera pose wrt world for each camera i
+  for (auto& id_cam_pair : cameras) {
+    problem.AddParameterBlock(id_cam_pair.second.T_w_c.data(),
+                              Sophus::SE3d::num_parameters,
+                              new Sophus::test::LocalParameterizationSE3);
+  }
+
+  // fixed cameras
+  for (auto& cam_id : fixed_cameras) {
+    problem.SetParameterBlockConstant(cameras.at(cam_id).T_w_c.data());
+  }
+
+  // CAMERA INTRINSCIS //
+
+  /*
+  // not working, I have to add block and make it constant
+  // with this implementation, only Ex4TestSuite.BundleAdjustmentIntrinsics test
+  is passed if (options.optimize_intrinsics) { for (auto& intrinsics_i :
+  calib_cam.intrinsics) { problem.AddParameterBlock(intrinsics_i->data(), 8);
+    }
+  }
+  */
+
+  for (auto& intrinsics_i : calib_cam.intrinsics) {
+    problem.AddParameterBlock(intrinsics_i->data(), 8);
+    if (!options.optimize_intrinsics) {
+      // calib_cam.T_i_c[i] camera pose for each camera i
+      problem.SetParameterBlockConstant(intrinsics_i->data());
+    }
+  }
+
+  // LANDMARKS & OBSERVATIONS //
+  /*
+  struct Landmark {
+    /// 3d position in world coordinates
+    Eigen::Vector3d p;
+
+    /// Inlier observations in the current map.
+    /// This is a subset of the original feature track.
+    FeatureTrack obs;
+
+    /// Outlier observations in the current map.
+    /// This is a subset of the original feature track.
+    FeatureTrack outlier_obs;
+    // using FeatureTrack = std::map<FrameCamId, FeatureId>;
+  };
+  */
+
+  for (auto& id_l_pair : landmarks) {
+    // 3d pos wrt world of the landmark
+    Eigen::Vector3d& p_3d = id_l_pair.second.p;
+
+    // landmark pos : parameter to be optimized (different from the camera
+    // calibration)
+    problem.AddParameterBlock(p_3d.data(), 3);
+
+    for (auto& cam_feature_pair : id_l_pair.second.obs) {
+      // cam_feature_pair.first : FrameCamId
+      // cam_feature_pair.second : FeatureId
+      Eigen::Vector2d p_2d = feature_corners.at(cam_feature_pair.first)
+                                 .corners[cam_feature_pair.second];
+
+      auto& T_w_c = cameras.at(cam_feature_pair.first).T_w_c;
+      // auto& intrinsics_i =
+      // calib_cam.intrinsics[cam_feature_pair.first.cam_id];
+      double* intrinsics_i =
+          calib_cam.intrinsics[cam_feature_pair.first.cam_id]->data();
+
+      std::string cam_model =
+          calib_cam.intrinsics[cam_feature_pair.first.cam_id]->name();
+
+      ceres::HuberLoss* lost_function;
+      if (options.use_huber) {
+        lost_function = new ceres::HuberLoss(options.huber_parameter);
+      } else {
+        lost_function = NULL;
+      }
+
+      ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<
+          visnav::BundleAdjustmentReprojectionCostFunctor, 2, 7, 3, 8>(
+          new visnav::BundleAdjustmentReprojectionCostFunctor(p_2d, cam_model));
+      // std::cout << "cost_function added " << std::endl;
+      problem.AddResidualBlock(cost_function, lost_function, T_w_c.data(),
+                               p_3d.data(), intrinsics_i);
+    }
+  }
 
   // Solve
   ceres::Solver::Options ceres_options;
