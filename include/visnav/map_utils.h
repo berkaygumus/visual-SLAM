@@ -340,16 +340,15 @@ void localize_camera(
   // ransac.max_iterations_ = 1000;  // maxIterations;
   ransac.computeModel();
 
-  //TODO: refine model with inliers?
-
   // ransac result
-  opengv::transformation_t ransac_transformation = ransac.model_coefficients_;
+  // opengv::transformation_t ransac_transformation =
+  // ransac.model_coefficients_;
 
-  adapter.sett(ransac_transformation.col(3));
-  adapter.setR(ransac_transformation.block<3,3>(0,0));
+  // refined result
+  opengv::transformation_t refined_transformation;
 
-  // refined result with inliers
-  opengv::transformation_t refined_transformation = opengv::absolute_pose::optimize_nonlinear(adapter,ransac.inliers_);
+  ransac.sac_model_->optimizeModelCoefficients(
+      ransac.inliers_, ransac.model_coefficients_, refined_transformation);
 
   Eigen::Vector3d t12 = refined_transformation.block(0, 3, 3, 1);
   Eigen::Matrix3d R12 = refined_transformation.block(0, 0, 3, 3);
