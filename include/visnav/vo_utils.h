@@ -61,10 +61,35 @@ void project_landmarks(
   // locations of the cameras. Put 2d coordinates of the projected points into
   // projected_points and the corresponding id of the landmark into
   // projected_track_ids.
-  UNUSED(current_pose);
-  UNUSED(cam);
-  UNUSED(landmarks);
-  UNUSED(cam_z_threshold);
+
+  for (auto& landmark : landmarks) {
+    Eigen::Vector3d p_3d_cam = current_pose.inverse() * landmark.second.p;
+    // std::cout << p_3d_cam[2] << " z threshold " << cam_z_threshold <<
+    // std::endl;
+
+    // behind the cam
+    if (p_3d_cam[2] < cam_z_threshold) {
+      // std::cout << " continue " << std::endl;
+      continue;
+    }
+
+    Eigen::Vector2d p_2d_cam = cam->project(p_3d_cam);
+
+    // outside the image
+    if (p_2d_cam[0] < 0 || p_2d_cam[0] >= cam->width()) {
+      // std::cout << p_2d_cam[0] << " width " << cam->width() << std::endl;
+      continue;
+    }
+
+    // outside the image
+    if (p_2d_cam[1] < 0 || p_2d_cam[1] >= cam->height()) {
+      // std::cout << p_2d_cam[1] << " height " << cam->height() << std::endl;
+      continue;
+    }
+
+    projected_points.push_back(p_2d_cam);
+    projected_track_ids.push_back(landmark.first);
+  }
 }
 
 void find_matches_landmarks(
