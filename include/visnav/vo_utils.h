@@ -293,17 +293,86 @@ void add_new_landmarks(const FrameCamId fcidl, const FrameCamId fcidr,
   // existing landmarks, triangulate and add new landmarks. Here
   // next_landmark_id is a running index of the landmarks, so after adding a new
   // landmark you should always increase next_landmark_id by 1.
-  UNUSED(fcidl);
-  UNUSED(fcidr);
-  UNUSED(kdl);
-  UNUSED(kdr);
-  UNUSED(calib_cam);
-  UNUSED(md_stereo);
-  UNUSED(md);
-  UNUSED(landmarks);
-  UNUSED(next_landmark_id);
-  UNUSED(t_0_1);
-  UNUSED(R_0_1);
+
+  for (auto& match : md.inliers) {
+    // match.first feature id for left cam fcidl
+    // match.second track id
+
+    // For all inlier feature to landmark matches
+    // add the observations to the existing landmarks
+    // std::pair<const visnav::FrameCamId, visnav::FeatureId> id
+    landmarks.at(match.second).obs.insert({fcidl, match.first});
+
+    // If the left camera's feature appears also in md_stereo.inliers,
+    // then add both observations.
+    // TODO: better way instead of for? maybe contain()?
+    for (auto& stereo_match : md_stereo.inliers) {
+      // stereo_match.first feature id for left cam fcidl
+      // stereo_match.second feature id for right cam fcidr
+
+      if (stereo_match.first == match.first) {
+        landmarks.at(match.second).obs.insert({fcidr, stereo_match.second});
+      }
+    }
+  }
+
+  // For all inlier stereo observations that were not added to the
+  // existing landmarks, triangulate and add new landmarks.
+  for (auto& stereo_match : md_stereo.inliers) {
+    // stereo_match.first feature id for left cam fcidl
+    // stereo_match.second feature id for right cam fcidr
+
+    bool exist = false;
+    // std::cout << " search for stereo feature " << stereo_match.first <<
+    // std::endl;
+
+    for (auto& match : md.inliers) {
+      // match.first feature id for left cam fcidl
+      // match.second track id
+
+      if (match.first == stereo_match.first) {
+        // landmark exists
+        // std::cout << " found stereo feature " << stereo_match.first << "
+        // track id " << match.second << std::endl;
+        exist = true;
+        break;
+      }
+    }
+
+    if (exist) {
+      continue;
+    }
+
+    // std::cout << " not found stereo feature " << stereo_match.first <<
+    // std::endl;
+
+    // add new landmark
+    opengv::bearingVector_t p0_3d =
+        calib_cam.intrinsics[0]->unproject(kdl.corners[stereo_match.first]);
+
+    opengv::bearingVector_t p1_3d =
+        calib_cam.intrinsics[1]->unproject(kdr.corners[stereo_match.second]);
+
+    opengv::bearingVectors_t p0_3d_vector, p1_3d_vector;
+    p0_3d_vector.push_back(p0_3d);
+    p1_3d_vector.push_back(p1_3d);
+
+    opengv::relative_pose::CentralRelativeAdapter adapter(
+        p0_3d_vector, p1_3d_vector, t_0_1, R_0_1);
+
+    size_t index = 0;
+
+    // run method 1
+    Eigen::Vector3d point = opengv::triangulation::triangulate(adapter, index);
+
+    Landmark l;
+
+    l.p = md.T_w_c * point;
+    l.obs.insert({fcidl, stereo_match.first});
+    l.obs.insert({fcidr, stereo_match.second});
+
+    landmarks[next_landmark_id++] = l;
+  }
 }
 
 void remove_old_keyframes(const FrameCamId fcidl, const int max_num_kfs,
