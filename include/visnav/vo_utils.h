@@ -112,14 +112,78 @@ void find_matches_landmarks(
   // should be used to filter outliers the same way as in exercise 3. You should
   // fill md.matches with <featureId,trackId> pairs for the successful matches
   // that pass all tests.
-  UNUSED(kdl);
-  UNUSED(landmarks);
-  UNUSED(feature_corners);
-  UNUSED(projected_points);
-  UNUSED(projected_track_ids);
-  UNUSED(match_max_dist_2d);
-  UNUSED(feature_match_threshold);
-  UNUSED(feature_match_dist_2_best);
+
+  for (int key_point_index = 0; key_point_index < int(kdl.corners.size());
+       key_point_index++) {
+    // key_point_index the index of keypoint;
+    // kdl.corner_descriptors[key_point_index]
+    // kdl.corners[key_point_index]
+    std::bitset<256> keypoint_descriptor =
+        kdl.corner_descriptors[key_point_index];
+
+    size_t min_dist1 = 256;
+    size_t min_dist2 = 256;
+    int best_match = -1;
+
+    for (int projected_point_index = 0;
+         projected_point_index < int(projected_points.size());
+         projected_point_index++) {
+      // projected_point_index
+      // projected_points[projected_point_index] : 2d point
+      // projected_track_ids[projected_point_index] : track id
+
+      // check each keypoint with each projected landmark
+      if ((kdl.corners[key_point_index] -
+           projected_points[projected_point_index])
+              .norm() > match_max_dist_2d) {
+        // std::cout << " projected_point_index " << projected_point_index << "
+        // norm big " << std::endl;
+        continue;
+      }
+
+      // candidate match
+      // find min dist for this keypoint and this landmark
+      // check all descriptors of the keypoints of this landmark with keypoint
+      // descriptor
+      // similar to keypoints.h file
+      size_t min_dist_for_descriptors = 256;
+      for (auto& frame_feature_pair :
+           landmarks.at(projected_track_ids[projected_point_index]).obs) {
+        std::bitset<256> frame_descriptor =
+            feature_corners.at(frame_feature_pair.first)
+                .corner_descriptors[frame_feature_pair.second];
+
+        std::bitset<256> diff_vector = frame_descriptor ^ keypoint_descriptor;
+        size_t dist = diff_vector.count();
+        if (dist < min_dist_for_descriptors) {
+          min_dist_for_descriptors = dist;
+        }
+      }
+      // std::cout << " min desc dist " << min_dist_for_descriptors << " for
+      // landmark index" << projected_point_index << std::endl;
+
+      if (min_dist_for_descriptors < min_dist1) {
+        min_dist2 = min_dist1;
+        min_dist1 = min_dist_for_descriptors;
+        best_match = projected_point_index;
+        // std::cout << " min1 dist " << min_dist1 << " min2 dist" << min_dist2
+        // << std::endl;
+
+      } else if (min_dist_for_descriptors < min_dist2) {
+        min_dist2 = min_dist_for_descriptors;
+        // std::cout << " min2 dist" << min_dist2 << std::endl;
+      }
+    }
+
+    if (int(min_dist1) < feature_match_threshold &&
+        feature_match_dist_2_best * int(min_dist1) <= int(min_dist2)) {
+      // <featureId,trackId>
+      // std::cout << "OKOKOKOK min1 dist " << min_dist1 << " min2 dist" <<
+      // min_dist2 << std::endl;
+      md.matches.push_back(std::pair<int, int>(
+          int(key_point_index), projected_track_ids[best_match]));
+    }
+  }
 }
 
 void localize_camera(const Sophus::SE3d& current_pose,
