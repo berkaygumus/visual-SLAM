@@ -386,9 +386,35 @@ void remove_old_keyframes(const FrameCamId fcidl, const int max_num_kfs,
   // of all the keyframes that are currently in the optimization should be
   // stored in kf_frames. Removed keyframes should be removed from cameras and
   // landmarks with no left observations should be moved to old_landmarks.
-  UNUSED(max_num_kfs);
-  UNUSED(cameras);
-  UNUSED(landmarks);
-  UNUSED(old_landmarks);
+
+  for (int size = int(kf_frames.size()); size > max_num_kfs; size--) {
+    std::cout << "remove frame pair" << std::endl;
+    // The frame IDs can be seen as timestamps
+    // for the images, i.e. they induce a temporal order on keyframes.
+
+    FrameId old_frame = *kf_frames.begin();
+    FrameCamId old_frame_cam_left(old_frame, 0);
+    FrameCamId old_frame_cam_right(old_frame, 1);
+
+    cameras.erase(old_frame_cam_left);
+    cameras.erase(old_frame_cam_right);
+
+    for (auto& landmark : landmarks) {
+      landmark.second.obs.erase(old_frame_cam_left);
+      landmark.second.obs.erase(old_frame_cam_right);
+
+      if (landmark.second.obs.size() == 0) {
+        old_landmarks.insert(landmark);
+        // landmarks.erase(landmark.first); // TODO: not working?
+        // iterate the map but delete the element, is it possible?
+      }
+    }
+
+    for (auto& landmark : old_landmarks) {
+      landmarks.erase(landmark.first);
+    }
+
+    kf_frames.erase(old_frame);
+  }
 }
 }  // namespace visnav
