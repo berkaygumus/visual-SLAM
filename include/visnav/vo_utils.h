@@ -204,10 +204,71 @@ void localize_camera(const Sophus::SE3d& current_pose,
   // the landmark to keypoints matches and PnP. This should be similar to the
   // localize_camera in exercise 4 but in this exercise we don't explicitly have
   // tracks.
-  UNUSED(cam);
-  UNUSED(kdl);
-  UNUSED(landmarks);
-  UNUSED(reprojection_error_pnp_inlier_threshold_pixel);
+
+  // double fx = cam->getParam()[0];
+  // double fy = cam->getParam()[1];
+  // std::cout << " focal " << fx << " " << fy << std::endl;
+  // 350 - 351
+  double f = 500;  // fx
+
+  double threshold_ransac =
+      1.0 - cos(atan(reprojection_error_pnp_inlier_threshold_pixel / f));
+
+  opengv::bearingVectors_t bearingVectors;
+  opengv::points_t points;
+
+  for (auto& match : md.matches) {
+    // match.first feature id
+    // match.second track id
+
+    // beam from cam to landmark
+    opengv::bearingVector_t beam_3d = cam->unproject(kdl.corners[match.first]);
+    bearingVectors.push_back(beam_3d);
+
+    // point wrt world
+    opengv::point_t point = landmarks.at(match.second).p;
+    points.push_back(point);
+  }
+
+  // the rest is same as localize_camera in map_utils.h
+  // https://github.com/laurentkneip/opengv/blob/master/test/test_absolute_pose_sac.cpp#L94
+  // create the central adapter
+  opengv::absolute_pose::CentralAbsoluteAdapter adapter(bearingVectors, points);
+  // create a Ransac object
+  opengv::sac::Ransac<
+      opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem>
+      ransac;
+  // create an AbsolutePoseSacProblem
+  // (algorithm is selectable: KNEIP, GAO, or EPNP)
+  std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem>
+      absposeproblem_ptr(
+          new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(
+              adapter, opengv::sac_problems::absolute_pose::
+                           AbsolutePoseSacProblem::KNEIP));
+  // run ransac
+  ransac.sac_model_ = absposeproblem_ptr;
+  ransac.threshold_ = threshold_ransac;
+  // ransac.max_iterations_ = 1000;  // maxIterations;
+  ransac.computeModel();
+
+  // ransac result
+  // opengv::transformation_t ransac_transformation =
+  // ransac.model_coefficients_;
+
+  // refined result
+  opengv::transformation_t refined_transformation;
+
+  ransac.sac_model_->optimizeModelCoefficients(
+      ransac.inliers_, ransac.model_coefficients_, refined_transformation);
+
+  Eigen::Vector3d t12 = refined_transformation.block(0, 3, 3, 1);
+  Eigen::Matrix3d R12 = refined_transformation.block(0, 0, 3, 3);
+  md.T_w_c = Sophus::SE3d(R12, t12);
+
+  // inlier_track_ids <- ransac.inliers_;
+  for (auto inlier_index : ransac.inliers_) {
+    md.inliers.push_back(md.matches[inlier_index]);
+  }
 }
 
 void add_new_landmarks(const FrameCamId fcidl, const FrameCamId fcidr,
