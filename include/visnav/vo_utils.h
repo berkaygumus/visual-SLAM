@@ -392,7 +392,7 @@ void remove_old_keyframes(const FrameCamId fcidl, const int max_num_kfs,
     // The frame IDs can be seen as timestamps
     // for the images, i.e. they induce a temporal order on keyframes.
 
-    FrameId old_frame = *kf_frames.begin();
+    FrameId old_frame = *(kf_frames.begin());
     FrameCamId old_frame_cam_left(old_frame, 0);
     FrameCamId old_frame_cam_right(old_frame, 1);
 
