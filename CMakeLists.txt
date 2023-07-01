@@ -12,6 +12,7 @@ set(EIGEN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen")
 set(CERES_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/build-ceres-solver")
 set(PANGOLIN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/build-Pangolin/src")
 set(OPENGV_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/build-opengv")
+# set(PCL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/build-pcl")
 
 # Set default build type if not specified otherwise.
 # See https://cmake.org/pipermail/cmake/2012-May/050243.html
@@ -88,6 +89,13 @@ message(STATUS "Found Pangolin headers in: ${Pangolin_INCLUDE_DIR}")
 find_package(opengv REQUIRED CONFIG HINTS ${OPENGV_ROOT} NO_DEFAULT_PATH)
 message(STATUS "Found OpenGV headers in: ${opengv_DIR}")
 
+# to use link to target "pcl"
+find_package(PCL 1.3 REQUIRED) # CONFIG HINTS ${PCL_ROOT} NO_DEFAULT_PATH)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+message(STATUS "Found PCL ${PCL_VERSION} headers in: ${PCL_INCLUDE_DIRS}")
+
 # to use link to target "TBB"
 find_package(TBB REQUIRED)
 message(STATUS "Found TBB ${TBB_VERSION_MAJOR}.${TBB_VERSION_MINOR} (interface version ${TBB_INTERFACE_VERSION}) headers in: ${TBB_INCLUDE_DIRS}")
@@ -117,6 +125,9 @@ target_link_libraries(sfm Ceres::ceres pangolin TBB::tbb OpenCV opengv)
 
 add_executable(odometry src/odometry.cpp)
 target_link_libraries(odometry Ceres::ceres pangolin TBB::tbb OpenCV opengv)
+
+add_executable(point_cloud_localization src/point_cloud_localization.cpp)
+target_link_libraries(point_cloud_localization Ceres::ceres pangolin TBB::tbb OpenCV opengv ${PCL_LIBRARIES})
 
 
 
