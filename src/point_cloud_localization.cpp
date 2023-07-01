@@ -62,7 +62,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/map_utils.h>
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
-//#include <voxel_utils.h>
+#include <visnav/voxel_utils.h>
 
 #include <visnav/gui_helper.h>
 #include <visnav/tracks.h>
@@ -725,14 +725,10 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
       PCL_ERROR("Couldn't read file %f \n", lidar_data_path);
       // return (-1);
     }
-    /*
-    if (pcl::io::loadPCDFile<pcl::PointXYZ>(lidar_data_path, *cloud) ==
-        -1)  //* load the file
-    {
-      PCL_ERROR("Couldn't read file %s \n", lidar_data_path);
-      // return (-1);
-    }
-    */
+
+    double resolution = 1;  // 1 meter
+
+    visnav::calculate_voxel_distribution(cloud, resolution);
   }
 
   const std::string timestams_path = dataset_path + "/cam0/data.csv";
