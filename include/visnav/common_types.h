@@ -272,6 +272,20 @@ struct ProjectedLandmark {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+/// voxel distribution
+struct voxel_dist {
+  Eigen::Vector3d voxel_center;
+
+  std::set<Eigen::Vector3d> points;
+
+  Eigen::Vector3d t;
+  Eigen::Matrix3d R;
+  Eigen::Vector3d sigma;
+  int N;
+
+  Eigen::Matrix3d A;
+};
+
 using ProjectedLandmarkPtr = std::shared_ptr<ProjectedLandmark>;
 using ProjectedLandmarkConstPtr = std::shared_ptr<const ProjectedLandmark>;
 

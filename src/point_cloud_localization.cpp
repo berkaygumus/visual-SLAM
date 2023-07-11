@@ -62,7 +62,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/map_utils.h>
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
+
+
 #include <visnav/voxel_utils.h>
+#include <visnav/icp_utils.h>
+#include <visnav/opt_sim3_utils.h>
 
 #include <visnav/gui_helper.h>
 #include <visnav/tracks.h>
@@ -143,7 +147,11 @@ Landmarks old_landmarks;
 ImageProjections image_projections;
 
 /// lidar map
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+pcl::PointCloud<pcl::PointXYZ>::Ptr global_map(
+    new pcl::PointCloud<pcl::PointXYZ>);
+
+/// voxel distribution
+std::pair<Eigen::Vector3d, voxel_dist> voxels;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// GUI parameters
@@ -720,15 +728,16 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
 
     pcl::PLYReader Reader;
 
-    if (Reader.read(lidar_data_path, *cloud) == -1)  //* load the file
+    if (Reader.read(lidar_data_path, *global_map) == -1)  //* load the file
     {
       PCL_ERROR("Couldn't read file %f \n", lidar_data_path);
       // return (-1);
     }
 
     double resolution = 1;  // 1 meter
+    // std::pair<Eigen::Vector3d, voxel_dist> voxels;
 
-    visnav::calculate_voxel_distribution(cloud, resolution);
+    calculate_voxel_distribution(global_map, resolution, voxels);
   }
 
   const std::string timestams_path = dataset_path + "/cam0/data.csv";
@@ -1027,6 +1036,61 @@ void optimize() {
 
     bundle_adjustment(feature_corners, ba_options, fixed_cameras, calib_cam_opt,
                       cameras_opt, landmarks_opt);
+
+    /*
+
+    * Monocular Camera Localization in 3D LiDAR Maps *
+
+    Subsequently, our method aligns the local reconstruction
+    whenever it is updated, i.e., a new keyframe is selected
+    by the camera tracking and added to the local mapping.
+    Since our method directly operates on the map maintained by ORB-SLAM,
+    the local mapping needs to be paused during the alignment.
+    Therefore, the alignment must run sufficiently fast in order to
+    avoid long interruptions that can cause the camera tracking to fail
+    since newly explored areas are not covered by the map.
+    */
+
+    // local reconstruction is updated
+
+    /*
+    Since our approach is not intended for global localization, a coarse
+    estimate for the transformation between this initial recon-
+    struction and the map is required.
+    */
+
+    // update the first local map acc. to known map for the first alignment
+    // TODO: how?
+    // should I check the ground truth data?
+
+    // try identity and gt with noise
+
+    // call icp function and get matches
+    // (keypoints from local and 3d points from known map)
+
+    // correspondence refinement ck -> ck’
+    // eliminate some matches using voxel distribution
+
+    /*
+    TODO: map and keypoints types are different
+    TODO: add initial guess from local map?
+    TODO: result map and keypoints types? Ptr or landmarks/cameras
+    
+
+    ICPOptions icp_options;
+    // TODO: define icp_options
+
+    find_refined_matches(global_map, keypoints, initial_guess, dist_max,
+    dist_min, voxels, global_map_indices, keypoint_indices)
+
+    */
+    
+
+    // alignment
+    // sim3 optmization with ceres
+
+    // update keypoints
+    // update keyframe/camera poses
 
     opt_finished = true;
     opt_running = false;
