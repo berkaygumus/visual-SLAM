@@ -29,94 +29,75 @@
 
 #include <Eigen/Dense>
 
+#include <ceres/ceres.h>
+
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
 
+#include <flann/flann.hpp>
+
 #include <visnav/common_types.h>
+
+using PointCloudPtr = pcl::PointCloud<pcl::PointXYZ>::Ptr;
 
 namespace visnav {
 
 struct ICPOptions {
-  /// 0: silent, 1: ceres brief report (one line), 2: ceres full report
-  int verbosity_level = 1;
-
-  /// update intrinsics or keep fixed
-  bool optimize_intrinsics = false;
-
-  /// use huber robust norm or squared norm
-  bool use_huber = true;
-
-  /// parameter for huber loss (in pixel)
-  double huber_parameter = 1.0;
-
-  /// maximum number of solver iterations
-  int max_num_iterations = 20;
+  double min_dist;
+  double max_dist;
+  int max_itr;
+  // initial guess
+  // threshol error
 };
 
+void find_closest_points_brute_force(const std::vector<Eigen::Vector3f> map,
+                                     const Landmarks landmarks,
+                                     ICPPairs& icp_pairs) {
+  // TODO: find closest point on the global map using  brute force
+  icp_pairs.clear();
+  for (auto landmark : landmarks) {
+    Eigen::Vector3d pos = landmark.second.p;
+    int closest_index = -1;
+    double closest_dist = 2;
+    double dist;
+    for (int i = 0; i < map.size(); i++) {
+      dist = (pos - map[i].cast<double>()).norm();
+      // Vector3f{ vertex.position.x(), vertex.position.y(), vertex.position.z()
+      // }
+      if (dist < closest_dist) {
+        closest_index = i;
+        closest_dist = dist;
+      }
+    }
 
-void find_initial_matches(const pcl::PointCloud<pcl::PointXYZ>::Ptr map,
-                          const pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints,
-                          Eigen::Matrix4f initial_guess, const double dist_max,
-                          const double dist_min, pcl::Indices& map_indices,
-                          pcl::Indices& keypoint_indices) {
-  pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-  // Set the input source and target
-  icp.setInputSource(keypoints);
-  icp.setInputTarget(map);
-
-  // Set the max correspondence distance to dist_max (e.g., correspondences with
-  // higher distances will be ignored)
-  icp.setMaxCorrespondenceDistance(dist_max);
-  // Set the maximum number of iterations (criterion 1)
-  icp.setMaximumIterations(50);
-  // Set the transformation epsilon (criterion 2)
-  // icp.setTransformationEpsilon(1e-8);
-  // Set the euclidean distance difference epsilon (criterion 3)
-  // icp.setEuclideanFitnessEpsilon(1);
-
-  // Perform the alignment
-  pcl::PointCloud<pcl::PointXYZ> transformed_keypoints;
-  icp.align(transformed_keypoints, initial_guess);
-
-  // TODO: change source code and get matches (indices)
-  /*
-  pcl::Indices map_indices(3);
-  pcl::Indices keypoint_indices(3);
-  icp.align(pc_matched, initial_guess, sample_indices, corresponding_indices);
-  */
-
-  // Obtain the transformation that aligned cloud_source to
-  // cloud_source_registered
-  Eigen::Matrix4f transformation = icp.getFinalTransformation();
-
-  // return matches or matches as parameter
+    if (closest_index != -1) {
+      icp_pairs.push_back(std::make_pair(closest_index, landmark.first));
+    }
+  }
 }
 
-void refine_matches(const pcl::PointCloud<pcl::PointXYZ>::Ptr map,
-                    const pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints,
-                    const std::pair<Eigen::Vector3d, voxel_dist> voxels,
-                    pcl::Indices& map_indices, pcl::Indices& keypoint_indices) {
+void find_initial_matches(const std::vector<Eigen::Vector3f> map,
+                          const Landmarks landmarks,
+                          const ICPOptions icp_options, ICPPairs& icp_pairs) {
+  // TODO: find matches using icp ( flann + ceres)
+  find_closest_points_brute_force(map, landmarks, icp_pairs);
 }
 
-void find_refined_matches(const pcl::PointCloud<pcl::PointXYZ>::Ptr map,
-                          const pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints,
-                          const Eigen::Matrix4f initial_guess,
-                          const double dist_max, const double dist_min,
-                          const std::pair<Eigen::Vector3d, voxel_dist> voxels,
-                          pcl::Indices& map_indices,
-                          pcl::Indices& keypoint_indices) {
-  // TODO: change the types of map amd keypoints:
+void refine_matches(const std::vector<Eigen::Vector3f> map,
+                    const Landmarks landmarks, const Voxels voxels,
+                    ICPPairs& icp_pairs) {
+  // TODO: refine matches acc. to voxels
+}
 
-  // from Landmarks = std::unordered_map<TrackId, Landmark> to
-  // pcl::PointCloud<pcl::PointXYZ>::Ptr
+void find_refined_matches(const std::vector<Eigen::Vector3f> map,
+                          const Landmarks landmarks, const Voxels voxels,
+                          const ICPOptions icp_options, ICPPairs& icp_pairs) {
+  // there are around 2500 landmarks for max_num_kfs = 20 frames
+  // bundle adjustment takes 1.0-1.5 seconds
+  // one brute force mathing takes 30-35 seconds
+  find_initial_matches(map, landmarks, icp_options, icp_pairs);
 
-  // from Cameras = std::map<FrameCamId, Camera> to
-  // pcl::PointCloud<pcl::PointXYZ>::Ptr
-
-  find_initial_matches(map, keypoints, initial_guess, dist_max, dist_min,
-                       map_indices, keypoint_indices);
-
-  refine_matches(map, keypoints, voxels, map_indices, keypoint_indices);
+  refine_matches(map, landmarks, voxels, icp_pairs);
 }
 
 }  // namespace visnav

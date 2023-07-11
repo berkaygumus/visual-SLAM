@@ -286,6 +286,11 @@ struct voxel_dist {
   Eigen::Matrix3d A;
 };
 
+/// pair of 3d point indices in global map and keypoint indices in local map
+using ICPPairs = std::vector<std::pair<int, TrackId>>;
+
+using Voxels = std::pair<Eigen::Vector3d, voxel_dist>;
+
 using ProjectedLandmarkPtr = std::shared_ptr<ProjectedLandmark>;
 using ProjectedLandmarkConstPtr = std::shared_ptr<const ProjectedLandmark>;
 

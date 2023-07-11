@@ -63,7 +63,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
 
-
 #include <visnav/voxel_utils.h>
 #include <visnav/icp_utils.h>
 #include <visnav/opt_sim3_utils.h>
@@ -149,6 +148,7 @@ ImageProjections image_projections;
 /// lidar map
 pcl::PointCloud<pcl::PointXYZ>::Ptr global_map(
     new pcl::PointCloud<pcl::PointXYZ>);
+std::vector<Eigen::Vector3f> map_points;
 
 /// voxel distribution
 std::pair<Eigen::Vector3d, voxel_dist> voxels;
@@ -734,6 +734,13 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
       // return (-1);
     }
 
+    std::cerr << " first point " << global_map->at(0).x << " "
+              << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
+
+    for (int i = 0; i < global_map->size(); i++) {
+      map_points.push_back(global_map->at(i).getVector3fMap());
+    }
+
     double resolution = 1;  // 1 meter
     // std::pair<Eigen::Vector3d, voxel_dist> voxels;
 
@@ -1034,8 +1041,15 @@ void optimize() {
   opt_thread.reset(new std::thread([fid, ba_options] {
     std::set<FrameCamId> fixed_cameras = {{fid, 0}, {fid, 1}};
 
+    clock_t begin = clock();
+
     bundle_adjustment(feature_corners, ba_options, fixed_cameras, calib_cam_opt,
                       cameras_opt, landmarks_opt);
+
+    clock_t end = clock();
+    double elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "bundle_adjustment Completed in " << elapsedSecs << " seconds."
+              << std::endl;
 
     /*
 
@@ -1075,16 +1089,23 @@ void optimize() {
     TODO: map and keypoints types are different
     TODO: add initial guess from local map?
     TODO: result map and keypoints types? Ptr or landmarks/cameras
-    
+
+    */
 
     ICPOptions icp_options;
     // TODO: define icp_options
 
-    find_refined_matches(global_map, keypoints, initial_guess, dist_max,
-    dist_min, voxels, global_map_indices, keypoint_indices)
+    ICPPairs icp_pairs;
 
-    */
-    
+    begin = clock();
+
+    find_refined_matches(map_points, landmarks_opt, voxels, icp_options,
+                         icp_pairs);
+
+    end = clock();
+    elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "find_refined_matches Completed in " << elapsedSecs
+              << " seconds." << std::endl;
 
     // alignment
     // sim3 optmization with ceres
