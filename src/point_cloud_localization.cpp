@@ -148,7 +148,10 @@ ImageProjections image_projections;
 /// lidar map
 pcl::PointCloud<pcl::PointXYZ>::Ptr global_map(
     new pcl::PointCloud<pcl::PointXYZ>);
-std::vector<Eigen::Vector3f> map_points;
+std::vector<Eigen::Vector3f> global_map_points;
+
+// lookup table for global map points
+flann::Index<flann::L2<float>>* m_index;
 
 /// voxel distribution
 std::pair<Eigen::Vector3d, voxel_dist> voxels;
@@ -738,8 +741,37 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
               << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
 
     for (int i = 0; i < global_map->size(); i++) {
-      map_points.push_back(global_map->at(i).getVector3fMap());
+      global_map_points.push_back(global_map->at(i).getVector3fMap());
     }
+
+    // build query for global map
+
+    std::cout << "Initializing FLANN index with " << global_map->size()
+              << " points." << std::endl;
+
+    // FLANN requires that all the points be flat. Therefore we copy the points
+    // to a separate flat array.
+    float* m_flatPoints;
+    m_flatPoints = new float[global_map_points.size() * 3];
+    for (size_t pointIndex = 0; pointIndex < global_map_points.size();
+         pointIndex++) {
+      for (size_t dim = 0; dim < 3; dim++) {
+        m_flatPoints[pointIndex * 3 + dim] = global_map_points[pointIndex][dim];
+      }
+    }
+
+    flann::Matrix<float> dataset(m_flatPoints, global_map_points.size(), 3);
+
+    // Building the index takes some time.
+
+    int m_nTrees = 1;
+    m_index = new flann::Index<flann::L2<float>>(
+        dataset, flann::KDTreeIndexParams(m_nTrees));
+    m_index->buildIndex();
+
+    std::cout << "FLANN index created." << std::endl;
+
+    // end of build query for global map
 
     double resolution = 1;  // 1 meter
     // std::pair<Eigen::Vector3d, voxel_dist> voxels;
@@ -1099,8 +1131,8 @@ void optimize() {
 
     begin = clock();
 
-    find_refined_matches(map_points, landmarks_opt, voxels, icp_options,
-                         icp_pairs);
+    find_refined_matches(global_map_points, landmarks_opt, voxels, icp_options,
+                         m_index, icp_pairs);
 
     end = clock();
     elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
