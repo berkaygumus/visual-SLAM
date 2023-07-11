@@ -150,8 +150,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr global_map(
     new pcl::PointCloud<pcl::PointXYZ>);
 std::vector<Eigen::Vector3f> global_map_points;
 
+// flann match object pointer
+FlannMatch* flann_match;
+
 // lookup table for global map points
-flann::Index<flann::L2<float>>* m_index;
+// flann::Index<flann::L2<float>>* m_index;
 
 /// voxel distribution
 std::pair<Eigen::Vector3d, voxel_dist> voxels;
@@ -744,7 +747,14 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
       global_map_points.push_back(global_map->at(i).getVector3fMap());
     }
 
-    // build query for global map
+    // flann match pointer
+    flann_match = new FlannMatch();
+
+    // build index
+    flann_match->buildIndex(global_map_points);
+
+    /*
+    // build index for global map
 
     std::cout << "Initializing FLANN index with " << global_map->size()
               << " points." << std::endl;
@@ -771,7 +781,8 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
 
     std::cout << "FLANN index created." << std::endl;
 
-    // end of build query for global map
+    // end of build index for global map
+    */
 
     double resolution = 1;  // 1 meter
     // std::pair<Eigen::Vector3d, voxel_dist> voxels;
@@ -1132,7 +1143,7 @@ void optimize() {
     begin = clock();
 
     find_refined_matches(global_map_points, landmarks_opt, voxels, icp_options,
-                         m_index, icp_pairs);
+                         flann_match, icp_pairs);
 
     end = clock();
     elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;

@@ -76,90 +76,135 @@ void find_closest_points_brute_force(const std::vector<Eigen::Vector3f> map,
   }
 }
 
-void find_closest_points_flann(
-    const std::vector<Eigen::Vector3f> global_map_points,
-    const Landmarks landmarks, const flann::Index<flann::L2<float>>* m_index,
-    ICPPairs& icp_pairs) {
-  // TODO: find closest point on the global map using flann
+class FlannMatch {
+ public:
+  FlannMatch() : m_nTrees{1}, m_index{nullptr}, m_flatPoints{nullptr} {}
 
-  if (!m_index) {
-    std::cout << "FLANN index needs to be build before querying any matches."
-              << std::endl;
-  }
-
-  icp_pairs.clear();
-
-  std::vector<Eigen::Vector3f> local_map_points;
-
-  for (auto landmark : landmarks) {
-    Eigen::Vector3f pos = landmark.second.p.cast<float>();
-    local_map_points.push_back(pos);
-  }
-
-  // match
-
-  // FLANN requires that all the points be flat. Therefore we copy the points to
-  // a separate flat array.
-  float* queryPoints = new float[local_map_points.size() * 3];
-  for (size_t pointIndex = 0; pointIndex < local_map_points.size();
-       pointIndex++) {
-    for (size_t dim = 0; dim < 3; dim++) {
-      queryPoints[pointIndex * 3 + dim] = local_map_points[pointIndex][dim];
+  ~FlannMatch() {
+    if (m_index) {
+      delete m_flatPoints;
+      delete m_index;
+      m_flatPoints = nullptr;
+      m_index = nullptr;
     }
   }
 
-  flann::Matrix<float> query(queryPoints, local_map_points.size(), 3);
-  flann::Matrix<int> indices(new int[query.rows * 1], query.rows, 1);
-  flann::Matrix<float> distances(new float[query.rows * 1], query.rows, 1);
+  void buildIndex(std::vector<Eigen::Vector3f> global_map_points) {
+    // build query for global map
 
-  // Do a knn search, searching for 1 nearest point and using 16 checks.
-  flann::SearchParams searchParams{16};
-  searchParams.cores = 0;
-  m_index->knnSearch(query, indices, distances, 1, searchParams);
+    std::cout << "Initializing FLANN index with " << global_map_points.size()
+              << " points." << std::endl;
 
-  // Filter the matches.
-  const unsigned nMatches = local_map_points.size();
-  // std::vector<Match> matches;
-  // matches.reserve(nMatches);
-
-  float m_maxDistance = 2;
-
-  int i = 0;
-  for (auto landmark : landmarks) {
-    if (*distances[i] <= m_maxDistance) {
-      // matches.push_back(Match{*indices[i], 1.f});
-      icp_pairs.push_back(std::make_pair(*indices[i], landmark.first));
+    // FLANN requires that all the points be flat. Therefore we copy the points
+    // to a separate flat array.
+    m_flatPoints = new float[global_map_points.size() * 3];
+    for (size_t pointIndex = 0; pointIndex < global_map_points.size();
+         pointIndex++) {
+      for (size_t dim = 0; dim < 3; dim++) {
+        m_flatPoints[pointIndex * 3 + dim] = global_map_points[pointIndex][dim];
+      }
     }
-    i++;
+
+    flann::Matrix<float> dataset(m_flatPoints, global_map_points.size(), 3);
+
+    // Building the index takes some time.
+
+    m_index = new flann::Index<flann::L2<float>>(
+        dataset, flann::KDTreeIndexParams(m_nTrees));
+    m_index->buildIndex();
+
+    std::cout << "FLANN index created." << std::endl;
+
+    // end of build query for global map
   }
 
-  // for (int i = 0; i < nMatches; i++)
-  //{
-  //    std::cout << "Query: " << *query[i] << std::endl;
-  //    std::cout << "Indices: " << *indices[i] << std::endl;
-  //    std::cout << "Distances: " << *distances[i] << std::endl;
-  //    std::cout << "Matches: " << matches[i].idx << std::endl;
-  //}
+  void findMatches(const Landmarks landmarks, ICPPairs& icp_pairs) {
+    // TODO: find closest point on the global map using flann
 
-  // Release the memory.
-  delete[] query.ptr();
-  delete[] indices.ptr();
-  delete[] distances.ptr();
+    if (!m_index) {
+      std::cout << "FLANN index needs to be build before querying any matches."
+                << std::endl;
+    }
 
-  // for (int i = 0; i < nMatches; i++)
-  //{
-  //    std::cout << "Matches: " << matches[i].idx << std::endl;
-  //}
-}
+    icp_pairs.clear();
+
+    std::vector<Eigen::Vector3f> local_map_points;
+
+    for (auto landmark : landmarks) {
+      Eigen::Vector3f pos = landmark.second.p.cast<float>();
+      local_map_points.push_back(pos);
+    }
+
+    // match
+
+    // FLANN requires that all the points be flat. Therefore we copy the points
+    // to a separate flat array.
+    float* queryPoints = new float[local_map_points.size() * 3];
+    for (size_t pointIndex = 0; pointIndex < local_map_points.size();
+         pointIndex++) {
+      for (size_t dim = 0; dim < 3; dim++) {
+        queryPoints[pointIndex * 3 + dim] = local_map_points[pointIndex][dim];
+      }
+    }
+
+    flann::Matrix<float> query(queryPoints, local_map_points.size(), 3);
+    flann::Matrix<int> indices(new int[query.rows * 1], query.rows, 1);
+    flann::Matrix<float> distances(new float[query.rows * 1], query.rows, 1);
+
+    // Do a knn search, searching for 1 nearest point and using 16 checks.
+    flann::SearchParams searchParams{16};
+    searchParams.cores = 0;
+    m_index->knnSearch(query, indices, distances, 1, searchParams);
+
+    // Filter the matches.
+    const unsigned nMatches = local_map_points.size();
+    // std::vector<Match> matches;
+    // matches.reserve(nMatches);
+
+    float m_maxDistance = 2;
+
+    int i = 0;
+    for (auto landmark : landmarks) {
+      if (*distances[i] <= m_maxDistance) {
+        // matches.push_back(Match{*indices[i], 1.f});
+        icp_pairs.push_back(std::make_pair(*indices[i], landmark.first));
+      }
+      i++;
+    }
+
+    // for (int i = 0; i < nMatches; i++)
+    //{
+    //    std::cout << "Query: " << *query[i] << std::endl;
+    //    std::cout << "Indices: " << *indices[i] << std::endl;
+    //    std::cout << "Distances: " << *distances[i] << std::endl;
+    //    std::cout << "Matches: " << matches[i].idx << std::endl;
+    //}
+
+    // Release the memory.
+    delete[] query.ptr();
+    delete[] indices.ptr();
+    delete[] distances.ptr();
+
+    // for (int i = 0; i < nMatches; i++)
+    //{
+    //    std::cout << "Matches: " << matches[i].idx << std::endl;
+    //}
+  }
+
+ private:
+  int m_nTrees;
+  // lookup table for global map points
+  flann::Index<flann::L2<float>>* m_index;
+  float* m_flatPoints;
+};
 
 void find_initial_matches(const std::vector<Eigen::Vector3f> map,
                           const Landmarks landmarks,
-                          const ICPOptions icp_options,
-                          const flann::Index<flann::L2<float>>* m_index,
+                          const ICPOptions icp_options, FlannMatch* flann_match,
                           ICPPairs& icp_pairs) {
   // TODO: find matches using icp ( flann + ceres)
   // find_closest_points_brute_force(map, landmarks, icp_pairs);
-  find_closest_points_flann(map, landmarks, m_index, icp_pairs);
+  flann_match->findMatches(landmarks, icp_pairs);
   std::cout << " match size " << icp_pairs.size() << std::endl;
 }
 
@@ -171,14 +216,13 @@ void refine_matches(const std::vector<Eigen::Vector3f> map,
 
 void find_refined_matches(const std::vector<Eigen::Vector3f> map,
                           const Landmarks landmarks, const Voxels voxels,
-                          const ICPOptions icp_options,
-                          const flann::Index<flann::L2<float>>* m_index,
+                          const ICPOptions icp_options, FlannMatch* flann_match,
                           ICPPairs& icp_pairs) {
   // there are around 2500 landmarks for max_num_kfs = 20 frames
   // bundle adjustment takes 1.0-1.5 seconds
   // one brute force mathing takes 30-35 seconds
   // one flann matching takes 0.25-0.45 seconds
-  find_initial_matches(map, landmarks, icp_options, m_index, icp_pairs);
+  find_initial_matches(map, landmarks, icp_options, flann_match, icp_pairs);
 
   refine_matches(map, landmarks, voxels, icp_pairs);
 }
