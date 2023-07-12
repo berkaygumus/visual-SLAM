@@ -31,6 +31,8 @@
 
 #include <ceres/ceres.h>
 
+#include <visnav/icp_ceres_utils.h>
+
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
 
@@ -80,6 +82,10 @@ class FlannMatch {
  public:
   FlannMatch() : m_nTrees{1}, m_index{nullptr}, m_flatPoints{nullptr} {}
 
+  // TODO: best m_nTrees?
+
+  // https://github.com/flann-lib/flann/blob/master/examples/flann_example.cpp
+
   ~FlannMatch() {
     if (m_index) {
       delete m_flatPoints;
@@ -118,7 +124,8 @@ class FlannMatch {
     // end of build query for global map
   }
 
-  void findMatches(const Landmarks landmarks, ICPPairs& icp_pairs) {
+  void findMatches(const std::vector<Eigen::Vector3f> local_map_points,
+                   ICPPairs& icp_pairs) {
     // TODO: find closest point on the global map using flann
 
     if (!m_index) {
@@ -127,13 +134,6 @@ class FlannMatch {
     }
 
     icp_pairs.clear();
-
-    std::vector<Eigen::Vector3f> local_map_points;
-
-    for (auto landmark : landmarks) {
-      Eigen::Vector3f pos = landmark.second.p.cast<float>();
-      local_map_points.push_back(pos);
-    }
 
     // match
 
@@ -152,6 +152,7 @@ class FlannMatch {
     flann::Matrix<float> distances(new float[query.rows * 1], query.rows, 1);
 
     // Do a knn search, searching for 1 nearest point and using 16 checks.
+    // TODO: best check number ?
     flann::SearchParams searchParams{16};
     searchParams.cores = 0;
     m_index->knnSearch(query, indices, distances, 1, searchParams);
@@ -163,13 +164,11 @@ class FlannMatch {
 
     float m_maxDistance = 2;
 
-    int i = 0;
-    for (auto landmark : landmarks) {
+    for (int i = 0; i < nMatches; i++) {
       if (*distances[i] <= m_maxDistance) {
         // matches.push_back(Match{*indices[i], 1.f});
-        icp_pairs.push_back(std::make_pair(*indices[i], landmark.first));
+        icp_pairs.push_back(std::make_pair(i, *indices[i]));
       }
-      i++;
     }
 
     // for (int i = 0; i < nMatches; i++)
@@ -204,7 +203,17 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> map,
                           ICPPairs& icp_pairs) {
   // TODO: find matches using icp ( flann + ceres)
   // find_closest_points_brute_force(map, landmarks, icp_pairs);
-  flann_match->findMatches(landmarks, icp_pairs);
+
+  std::vector<Eigen::Vector3f> local_map_points;
+
+  for (auto landmark : landmarks) {
+    Eigen::Vector3f pos = landmark.second.p.cast<float>();
+    local_map_points.push_back(pos);
+  }
+
+  Sophus::SE3d T_w_l = Sophus::SE3d();
+
+  flann_match->findMatches(local_map_points, icp_pairs);
   std::cout << " match size " << icp_pairs.size() << std::endl;
 }
 

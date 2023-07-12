@@ -287,7 +287,7 @@ struct voxel_dist {
 };
 
 /// pair of 3d point indices in global map and keypoint indices in local map
-using ICPPairs = std::vector<std::pair<int, TrackId>>;
+using ICPPairs = std::vector<std::pair<int, int>>;
 
 using Voxels = std::pair<Eigen::Vector3d, voxel_dist>;
 
