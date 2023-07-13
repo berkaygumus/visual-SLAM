@@ -19,8 +19,8 @@ namespace visnav {
 
 struct TransformationCostFunctor {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  TransformationCostFunctor(const Eigen::Vector3d& global_map_point,
-                            const Eigen::Vector3d& local_map_point)
+  TransformationCostFunctor(const Eigen::Vector3d& local_map_point,
+                            const Eigen::Vector3d& global_map_point)
       : global_map_point(global_map_point), local_map_point(local_map_point) {}
 
   template <typename T>
@@ -33,13 +33,24 @@ struct TransformationCostFunctor {
     return true;
   }
 
-  const Eigen::Vector3d local_map_point;
   const Eigen::Vector3d global_map_point;
+  const Eigen::Vector3d local_map_point;
 };
 
+void transform_points(const Sophus::SE3d sT_w_l,
+                      std::vector<Eigen::Vector3f>& local_map_points) {
+  // Eigen::Map<Sophus::SE3d const> const T_w_l(sT_w_l);
+  const Eigen::Vector3f t_w_l = sT_w_l.translation().cast<float>();
+  const Eigen::Matrix3f R_w_l = sT_w_l.rotationMatrix().cast<float>();
+
+  for (auto& point : local_map_points) {
+    point = R_w_l * point + t_w_l;
+  }
+}
+
 // Run to optimize transformation
-void estimate_pose(const std::vector<Eigen::Vector3f>& local_map_points,
-                   const std::vector<Eigen::Vector3f>& global_map_points,
+void estimate_pose(const std::vector<Eigen::Vector3f>& global_map_points,
+                   const std::vector<Eigen::Vector3f>& local_map_points,
                    const ICPPairs& icp_pairs, Sophus::SE3d& T_w_l) {
   ceres::Problem problem;
 
@@ -60,8 +71,8 @@ void estimate_pose(const std::vector<Eigen::Vector3f>& local_map_points,
         new ceres::AutoDiffCostFunction<visnav::TransformationCostFunctor, 3,
                                         7>(
             new visnav::TransformationCostFunctor(
-                local_map_points[pair.first].cast<double>(),
-                global_map_points[pair.second].cast<double>()));
+                global_map_points[pair.second].cast<double>(),
+                local_map_points[pair.first].cast<double>()));
     // std::cout << "cost_function added " << std::endl;
     problem.AddResidualBlock(cost_function, lost_function, T_w_l.data());
   }
@@ -73,7 +84,7 @@ void estimate_pose(const std::vector<Eigen::Vector3f>& local_map_points,
   ceres_options.num_threads = std::thread::hardware_concurrency();
   ceres::Solver::Summary summary;
   Solve(ceres_options, &problem, &summary);
-  int verbosity_level = 2;
+  int verbosity_level = 0;
   switch (verbosity_level) {
     // 0: silent
     case 1:
