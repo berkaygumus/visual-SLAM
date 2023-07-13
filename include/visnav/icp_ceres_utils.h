@@ -58,7 +58,7 @@ void estimate_pose(const std::vector<Eigen::Vector3f>& global_map_points,
                             new Sophus::test::LocalParameterizationSE3);
 
   bool use_huber = false;
-  double huber_parameter = 1;
+  double huber_parameter = 0.2;
   ceres::HuberLoss* lost_function;
   if (use_huber) {
     lost_function = new ceres::HuberLoss(huber_parameter);
@@ -84,7 +84,7 @@ void estimate_pose(const std::vector<Eigen::Vector3f>& global_map_points,
   ceres_options.num_threads = std::thread::hardware_concurrency();
   ceres::Solver::Summary summary;
   Solve(ceres_options, &problem, &summary);
-  int verbosity_level = 0;
+  int verbosity_level = 1;
   switch (verbosity_level) {
     // 0: silent
     case 1:

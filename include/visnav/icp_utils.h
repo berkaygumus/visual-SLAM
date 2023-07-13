@@ -215,8 +215,8 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   // for debug
   // local_map_points is the first part of global_map_points
-  for (int i = 0; i < 100; i++) {
-    Eigen::Vector3f pos = global_map_points[i];
+  for (int i = 0; i < 2500; i++) {
+    Eigen::Vector3f pos = global_map_points[1000 * i];
     local_map_points.push_back(pos);
   }
 
@@ -295,9 +295,17 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   // debug
   Eigen::Vector3d initial_t;
-  initial_t << 0, 0, 0.1;  // Eigen::Vector3d::Zero()
+  initial_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
+
+  Eigen::Matrix3d initial_R;
+  double rot = 0; ///180 * 3.14;
+  initial_R << cos(rot), -sin(rot), 0.0,
+                sin(rot), cos(rot), 0.0,
+                0.0, 0.0, 1.0; //Eigen::Matrix3d::Identity()
+
+
   Sophus::SE3d initial_guess =
-      Sophus::SE3d(Eigen::Matrix3d::Identity(), initial_t);
+      Sophus::SE3d(initial_R, initial_t);
 
   // for debug
   std::cout << " before transform_points " << std::endl
@@ -319,20 +327,27 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     std::cout << "first transformation " << std::endl
               << final_result.matrix() << std::endl;
 
-    // flann_match->findMatches(local_map_points, icp_pairs);
-    icp_pairs.clear();
-    for (int i = 0; i < 100; i++) {
-      icp_pairs.push_back(std::make_pair(i, i));
-    }
+    flann_match->findMatches(local_map_points, icp_pairs);
+    // icp_pairs.clear();
+    // for (int i = 0; i < 100; i++) {
+    //  icp_pairs.push_back(std::make_pair(i, i));
+    //}
     // std::cout << " match size " << icp_pairs.size() << std::endl;
 
     // for debug
     std::cout << " pairs " << std::endl;
-    // for (auto& pair : icp_pairs) {
-    //  std::cout << pair.first << " " << pair.second << std::endl;
-    std::cout << global_map_points[5].transpose() << std::endl;
-    std::cout << local_map_points[5].transpose() << std::endl << std::endl;
-    //}
+    int ttt = 0;
+    for (auto& pair : icp_pairs) {
+      std::cout << pair.first << " " << pair.second << std::endl;
+      std::cout << global_map_points[pair.second].transpose() << std::endl;
+      std::cout << local_map_points[pair.first].transpose() << std::endl
+                << global_map_points[1000 * pair.first].transpose() << std::endl
+                << std::endl;
+      ttt++;
+      if(ttt>200){
+        break;
+      }
+    }
 
     estimate_pose(global_map_points, local_map_points, icp_pairs,
                   incremental_result);
