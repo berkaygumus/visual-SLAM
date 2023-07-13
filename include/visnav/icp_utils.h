@@ -290,13 +290,26 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
   Sophus::SE3d incremental_result =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
+  Sophus::SE3d final_result =
+      Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+
   // debug
   Eigen::Vector3d initial_t;
   initial_t << 0, 0, 0.1;  // Eigen::Vector3d::Zero()
-  Sophus::SE3d final_result =
+  Sophus::SE3d initial_guess =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), initial_t);
 
-  transform_points(final_result, local_map_points);
+  // for debug
+  std::cout << " before transform_points " << std::endl
+            << local_map_points[0] << std::endl;
+
+  transform_points(initial_guess, local_map_points);
+
+  std::cout << "first transformation " << std::endl
+            << initial_guess.matrix() << std::endl;
+
+  std::cout << " after transform_points " << std::endl
+            << local_map_points[0] << std::endl;
 
   int itr_num = 10;
   for (int i = 0; i < itr_num; i++) {
@@ -305,14 +318,6 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // for debug
     std::cout << "first transformation " << std::endl
               << final_result.matrix() << std::endl;
-
-    std::cout << " before transform_points " << std::endl
-              << local_map_points[0] << std::endl;
-
-    // transform_points(final_result, local_map_points);
-
-    std::cout << " after transform_points " << std::endl
-              << local_map_points[0] << std::endl;
 
     // flann_match->findMatches(local_map_points, icp_pairs);
     icp_pairs.clear();
@@ -338,7 +343,7 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
     // std::cout << " before point " << std::endl << local_map_points[0] <<
     // std::endl;
-    final_result = incremental_result.inverse() * final_result;
+    final_result = incremental_result * final_result;
     // for debug
     std::cout << " transformation " << std::endl
               << final_result.matrix() << std::endl;
@@ -349,6 +354,9 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   std::cout << " final transformation " << std::endl
             << final_result.matrix() << std::endl;
+
+  std::cout << " final final transformation " << std::endl
+            << (final_result * initial_guess).matrix() << std::endl;
 
   /*for (auto& pair : icp_pairs) {
     std::cout << " local and global point " << std::endl

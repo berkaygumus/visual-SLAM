@@ -19,8 +19,8 @@ namespace visnav {
 
 struct TransformationCostFunctor {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  TransformationCostFunctor(const Eigen::Vector3d& local_map_point,
-                            const Eigen::Vector3d& global_map_point)
+  TransformationCostFunctor(const Eigen::Vector3d& global_map_point,
+                            const Eigen::Vector3d& local_map_point)
       : global_map_point(global_map_point), local_map_point(local_map_point) {}
 
   template <typename T>
