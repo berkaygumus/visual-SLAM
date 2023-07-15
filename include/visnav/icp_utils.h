@@ -298,14 +298,11 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
   initial_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
 
   Eigen::Matrix3d initial_R;
-  double rot = 0; ///180 * 3.14;
-  initial_R << cos(rot), -sin(rot), 0.0,
-                sin(rot), cos(rot), 0.0,
-                0.0, 0.0, 1.0; //Eigen::Matrix3d::Identity()
+  double rot = 0;  /// 180 * 3.14;
+  initial_R << cos(rot), -sin(rot), 0.0, sin(rot), cos(rot), 0.0, 0.0, 0.0,
+      1.0;  // Eigen::Matrix3d::Identity()
 
-
-  Sophus::SE3d initial_guess =
-      Sophus::SE3d(initial_R, initial_t);
+  Sophus::SE3d initial_guess = Sophus::SE3d(initial_R, initial_t);
 
   // for debug
   std::cout << " before transform_points " << std::endl
@@ -344,7 +341,7 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
                 << global_map_points[1000 * pair.first].transpose() << std::endl
                 << std::endl;
       ttt++;
-      if(ttt>200){
+      if (ttt > 200) {
         break;
       }
     }

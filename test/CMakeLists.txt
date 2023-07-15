@@ -30,6 +30,15 @@ target_link_libraries(test_ex4 gtest gtest_main Ceres::ceres opengv TBB::tbb)
 add_executable(test_ex5 src/test_ex5.cpp)
 target_link_libraries(test_ex5 gtest gtest_main Ceres::ceres opengv TBB::tbb)
 
+add_executable(test_icp src/test_icp.cpp)
+target_link_libraries(test_icp Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
+
+add_executable(test_icp_ceres src/test_icp_ceres.cpp)
+target_link_libraries(test_icp_ceres Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
+
+add_executable(test_icp_flann src/test_icp_flann.cpp)
+target_link_libraries(test_icp_flann Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
+
 
 
 gtest_discover_tests(test_ex0 DISCOVERY_TIMEOUT 120)
