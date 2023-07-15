@@ -206,40 +206,39 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   std::vector<Eigen::Vector3f> local_map_points;
 
-  /*
   for (auto landmark : landmarks) {
     Eigen::Vector3f pos = landmark.second.p.cast<float>();
     local_map_points.push_back(pos);
   }
-  */
 
-  // for debug
-  // local_map_points is the first part of global_map_points
-  for (int i = 0; i < 2500; i++) {
-    Eigen::Vector3f pos = global_map_points[1000 * i];
-    local_map_points.push_back(pos);
-  }
-
-  Eigen::Matrix4d guess = Eigen::Matrix4d::Identity();
-
-  // first body pose wrt world
+  //// BODY POSE1 WRT WORLD FROM GROUND TRUTH FILE
+  // Sensor extrinsics wrt. the body-frame. This is the transformation of the
+  // tracking prima to the body frame.
   // p_RS_R_x [m], p_RS_R_y [m], p_RS_R_z [m], q_RS_w [], q_RS_x [], q_RS_y [],
   // q_RS_z [] 0.878612,2.142470,0.947262,0.060514,-0.828459,-0.058956,-0.553641
 
+  Eigen::Quaterniond q_body1_w;
+  q_body1_w.x() = -0.828459;
+  q_body1_w.y() = -0.058956;
+  q_body1_w.z() = -0.553641;
+  q_body1_w.w() = 0.060514;
+
+  Eigen::Vector3d t_body1_w;
+  t_body1_w << 0.878612, 2.142470, 0.947262;
+
+  Eigen::Matrix3d R_body1_w = q_body1_w.normalized().toRotationMatrix();
+
+  Sophus::SE3d T_body1_w = Sophus::SE3d(R_body1_w, t_body1_w);
+
+  ///// CAM POSE WRT BODY1 FROM GROUND TRUTH FILE
+  // cam0 pose wrt body
+  // Sensor extrinsics wrt. the body-frame.
   /*
-
-  Eigen::Quaterniond q_w_body1;
-  q_w_body1.x() = -0.828459;
-  q_w_body1.y() = -0.058956;
-  q_w_body1.z() = -0.553641;
-  q_w_body1.w() = 0.060514;
-
-  Eigen::Vector3d t_w_body1;
-  t_w_body1 << 0.878612, 2.142470, 0.947262;
-
-  Eigen::Matrix3d R_w_body1 = q_w_body1.normalized().toRotationMatrix();
-
-  Sophus::SE3d T_body1_w = Sophus::SE3d(R_w_body1, t_w_body1);
+  [0.0148655429818, -0.999880929698, 0.00414029679422, -0.0216401454975,
+         0.999557249008, 0.0149672133247, 0.025715529948, -0.064676986768,
+        -0.0257744366974, 0.00375618835797, 0.999660727178, 0.00981073058949,
+         0.0, 0.0, 0.0, 1.0]
+  */
 
   ///
   Eigen::Vector3d t_body_cam;
@@ -252,57 +251,35 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   Sophus::SE3d T_body_cam = Sophus::SE3d(R_body_cam, t_body_cam);
 
-  */
+  ///// CAM1 POSE WRT WORLD
+  // cam1 frame is local map frame
 
-  // cam0 pose wrt body
-  /*
-  [0.0148655429818, -0.999880929698, 0.00414029679422, -0.0216401454975,
-         0.999557249008, 0.0149672133247, 0.025715529948, -0.064676986768,
-        -0.0257744366974, 0.00375618835797, 0.999660727178, 0.00981073058949,
-         0.0, 0.0, 0.0, 1.0]
-  */
-
-  // pose first cam (local map) wrt world
-
-  /*
-
-  Sophus::SE3d T_w_cam1 = T_body1_w.inverse() * T_body_cam;
+  // Sophus::SE3d T_w_cam1 = T_body1_w.inverse() * T_body_cam;
+  Sophus::SE3d T_w_cam1 = T_body1_w * T_body_cam;
 
   std::cout << " ground truth transformation Sophus::SE3d" << std::endl
             << T_w_cam1.matrix() << std::endl;
 
-  Eigen::Vector3d t_w_cam1 = R_w_body1 * t_body_cam + t_w_body1;
-  Eigen::Matrix3d R_w_cam1 = R_w_body1 * R_body_cam;
+  Eigen::Vector3d t_w_cam1 =
+      R_body1_w.inverse() * t_body_cam - R_body1_w.inverse() * t_body1_w;
+  Eigen::Matrix3d R_w_cam1 = R_body1_w.inverse() * R_body_cam;
 
-  std::cout << " ground truth transformation " << std::endl
+  std::cout << " ground truth transformation Eigen" << std::endl
             << R_w_cam1 << std::endl
             << t_w_cam1 << std::endl;
 
-  Sophus::SE3d T_w_l = Sophus::SE3d();
-
-  Eigen::Vector3d t12 = guess.block(0, 3, 3, 1);
-  Eigen::Matrix3d R12 = R_w_cam1;  // guess.block(0, 0, 3, 3);
-  T_w_l = T_w_cam1;                // Sophus::SE3d(R12, t12);
-
   /// initial guess
   // Sophus::SE3d final_result = T_body1_w.inverse() * T_body_cam;
-  */
+
+  Sophus::SE3d initial_guess = T_w_cam1;
+
+  /////// START ICP ////////
+
   Sophus::SE3d incremental_result =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
   Sophus::SE3d final_result =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
-
-  // debug
-  Eigen::Vector3d initial_t;
-  initial_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
-
-  Eigen::Matrix3d initial_R;
-  double rot = 0;  /// 180 * 3.14;
-  initial_R << cos(rot), -sin(rot), 0.0, sin(rot), cos(rot), 0.0, 0.0, 0.0,
-      1.0;  // Eigen::Matrix3d::Identity()
-
-  Sophus::SE3d initial_guess = Sophus::SE3d(initial_R, initial_t);
 
   // for debug
   std::cout << " before transform_points " << std::endl
@@ -310,19 +287,19 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   transform_points(initial_guess, local_map_points);
 
-  std::cout << "first transformation " << std::endl
+  std::cout << "initial_guess " << std::endl
             << initial_guess.matrix() << std::endl;
 
   std::cout << " after transform_points " << std::endl
             << local_map_points[0] << std::endl;
 
-  int itr_num = 10;
+  int itr_num = 30;
   for (int i = 0; i < itr_num; i++) {
     std::cout << " ///////////// itreation " << i << " ////////////////////"
               << std::endl;
     // for debug
-    std::cout << "first transformation " << std::endl
-              << final_result.matrix() << std::endl;
+    // std::cout << "first transformation " << std::endl
+    //          << final_result.matrix() << std::endl;
 
     flann_match->findMatches(local_map_points, icp_pairs);
     // icp_pairs.clear();
@@ -332,24 +309,25 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // std::cout << " match size " << icp_pairs.size() << std::endl;
 
     // for debug
-    std::cout << " pairs " << std::endl;
+    /*
+    std::cout << " pairs local-global" << std::endl;
     int ttt = 0;
     for (auto& pair : icp_pairs) {
       std::cout << pair.first << " " << pair.second << std::endl;
-      std::cout << global_map_points[pair.second].transpose() << std::endl;
-      std::cout << local_map_points[pair.first].transpose() << std::endl
-                << global_map_points[1000 * pair.first].transpose() << std::endl
+      std::cout << local_map_points[pair.first].transpose() << std::endl;
+      std::cout << global_map_points[pair.second].transpose() << std::endl
                 << std::endl;
       ttt++;
       if (ttt > 200) {
         break;
       }
     }
+    */
 
     estimate_pose(global_map_points, local_map_points, icp_pairs,
                   incremental_result);
-    std::cout << " incremental transformation " << std::endl
-              << incremental_result.matrix() << std::endl;
+    // std::cout << " incremental transformation " << std::endl
+    //          << incremental_result.matrix() << std::endl;
 
     transform_points(incremental_result, local_map_points);
 
@@ -357,8 +335,10 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // std::endl;
     final_result = incremental_result * final_result;
     // for debug
+    //std::cout << " transformation " << std::endl
+    //          << final_result.matrix() << std::endl;
     std::cout << " transformation " << std::endl
-              << final_result.matrix() << std::endl;
+              << final_result.translation().transpose() << std::endl;
 
     // std::cout << " after point " << std::endl << local_map_points[0] <<
     // std::endl;

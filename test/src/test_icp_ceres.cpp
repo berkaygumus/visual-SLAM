@@ -97,6 +97,9 @@ int main(int argc, char** argv) {
   std::cout << " after transform_points " << std::endl
             << local_map_points[0] << std::endl;
 
+  initial_guess =
+      Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+
   int itr_num = 2;
   for (int i = 0; i < itr_num; i++) {
     std::cout << " ///////////// itreation " << i << " ////////////////////"

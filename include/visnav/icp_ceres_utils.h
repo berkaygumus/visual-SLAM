@@ -80,7 +80,8 @@ void estimate_pose(const std::vector<Eigen::Vector3f>& global_map_points,
   // Solve
   ceres::Solver::Options ceres_options;
   ceres_options.max_num_iterations = 10;  // options.max_num_iterations;
-  ceres_options.linear_solver_type = ceres::SPARSE_SCHUR;
+  ceres_options.linear_solver_type = ceres::DENSE_QR;  // ceres::SPARSE_SCHUR;
+  ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
   ceres_options.num_threads = std::thread::hardware_concurrency();
   ceres::Solver::Summary summary;
   Solve(ceres_options, &problem, &summary);
