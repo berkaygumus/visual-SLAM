@@ -277,7 +277,7 @@ struct Voxel {
   Eigen::Vector3f voxel_center;
   std::vector<Eigen::Vector3f> points;
 
-  // distribution  
+  // distribution
   Eigen::Vector3d t;
   Eigen::Matrix3d R;
   Sophus::SE3f T;

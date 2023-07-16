@@ -33,7 +33,7 @@ std::vector<Eigen::Vector3f> global_map_points;
 FlannMatch* flann_match;
 
 int main(int argc, char** argv) {
-  /////////////////////// load data ////////////////////////
+  /////////// load target data ///////////
 
   std::string dataset_path = "data/V1_01_easy/mav0";
 
@@ -54,19 +54,9 @@ int main(int argc, char** argv) {
     global_map_points.push_back(global_map->at(i).getVector3fMap());
   }
 
-  // flann match pointer
-  flann_match = new FlannMatch();
+  /////////// create source data ///////////
 
-  // build index
-  flann_match->buildIndex(global_map_points);
-
-  ////////////////////// icp /////////////////////////////
-
-  ICPOptions icp_options;
-  // TODO: define icp_options
-
-  ICPPairs icp_pairs;
-
+  // subset of target data
   std::vector<Eigen::Vector3f> local_map_points;
 
   for (int i = 0; i < 2500; i++) {
@@ -74,99 +64,56 @@ int main(int argc, char** argv) {
     local_map_points.push_back(pos);
   }
 
-  clock_t begin = clock();
+  // transform the source data
+  Eigen::Vector3d actual_t;
+  actual_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
 
-  /// start ICP
-  Sophus::SE3d incremental_result =
-      Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+  Eigen::Matrix3d actual_R;
+  double rot = 0;  /// 180 * 3.14;
+  actual_R << cos(rot), -sin(rot), 0.0, sin(rot), cos(rot), 0.0, 0.0, 0.0,
+      1.0;  // Eigen::Matrix3d::Identity()
 
-  Sophus::SE3d final_result =
-      Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+  Sophus::SE3d actual_transformation = Sophus::SE3d(actual_R, actual_t);
 
-  // debug
+  // Sophus::SE3d actual_transformation =
+  //    Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+
+  transform_points(actual_transformation, local_map_points);
+
+  /////////// FLANN for the nearest point search ///////////
+  // flann match pointer
+  flann_match = new FlannMatch();
+
+  // build index
+  flann_match->buildIndex(global_map_points);
+
+  /////////// ICP options ///////////
+
+  ICPOptions icp_options;
+  // TODO: define icp_options
+
+  ICPPairs icp_pairs;
+
+  /////////// initial guess ///////////
+
   Eigen::Vector3d initial_t;
   initial_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
 
   Eigen::Matrix3d initial_R;
-  double rot = 0;  /// 180 * 3.14;
-  initial_R << cos(rot), -sin(rot), 0.0, sin(rot), cos(rot), 0.0, 0.0, 0.0,
+  double rot2 = 0;  /// 180 * 3.14;
+  initial_R << cos(rot2), -sin(rot2), 0.0, sin(rot2), cos(rot2), 0.0, 0.0, 0.0,
       1.0;  // Eigen::Matrix3d::Identity()
 
-  Sophus::SE3d initial_guess = Sophus::SE3d(initial_R, initial_t);
+  // Sophus::SE3d guess = Sophus::SE3d(initial_R, initial_t);
+  Sophus::SE3d guess =
+      Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
-  // for debug
-  std::cout << " before transform_points " << std::endl
-            << local_map_points[0] << std::endl;
+  /////////// ICP SETUP ///////////
 
-  transform_points(initial_guess, local_map_points);
+  clock_t begin = clock();
 
-  std::cout << "first transformation " << std::endl
-            << initial_guess.matrix() << std::endl;
-
-  std::cout << " after transform_points " << std::endl
-            << local_map_points[0] << std::endl;
-
-  int itr_num = 10;
-  for (int i = 0; i < itr_num; i++) {
-    std::cout << " ///////////// itreation " << i << " ////////////////////"
-              << std::endl;
-    // for debug
-    std::cout << "first transformation " << std::endl
-              << final_result.matrix() << std::endl;
-
-    flann_match->findMatches(local_map_points, icp_pairs);
-    // icp_pairs.clear();
-    // for (int i = 0; i < 100; i++) {
-    //  icp_pairs.push_back(std::make_pair(i, i));
-    //}
-    // std::cout << " match size " << icp_pairs.size() << std::endl;
-
-    // for debug
-    std::cout << " pairs " << std::endl;
-    int ttt = 0;
-    for (auto& pair : icp_pairs) {
-      std::cout << pair.first << " " << pair.second << std::endl;
-      std::cout << global_map_points[pair.second].transpose() << std::endl;
-      std::cout << local_map_points[pair.first].transpose() << std::endl
-                << global_map_points[1000 * pair.first].transpose() << std::endl
-                << std::endl;
-      ttt++;
-      if (ttt > 200) {
-        break;
-      }
-    }
-
-    estimate_pose(global_map_points, local_map_points, icp_pairs,
-                  incremental_result);
-    std::cout << " incremental transformation " << std::endl
-              << incremental_result.matrix() << std::endl;
-
-    transform_points(incremental_result, local_map_points);
-
-    // std::cout << " before point " << std::endl << local_map_points[0] <<
-    // std::endl;
-    final_result = incremental_result * final_result;
-    // for debug
-    std::cout << " transformation " << std::endl
-              << final_result.matrix() << std::endl;
-
-    // std::cout << " after point " << std::endl << local_map_points[0] <<
-    // std::endl;
-  }
-
-  std::cout << " final transformation " << std::endl
-            << final_result.matrix() << std::endl;
-
-  std::cout << " final final transformation " << std::endl
-            << (final_result * initial_guess).matrix() << std::endl;
-
-  /*for (auto& pair : icp_pairs) {
-    std::cout << " local and global point " << std::endl
-              << local_map_points[pair.first].transpose() << std::endl
-              << global_map_points[pair.second].transpose() << std::endl;
-  }*/
-
-  /// end ICP
+  find_initial_matches(global_map_points, local_map_points, guess, icp_options,
+                       flann_match, icp_pairs);
 
   clock_t end = clock();
   double elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;

@@ -124,7 +124,7 @@ class FlannMatch {
     // end of build query for global map
   }
 
-  void findMatches(const std::vector<Eigen::Vector3f> local_map_points,
+  void findMatches(std::vector<Eigen::Vector3f> local_map_points,
                    ICPPairs& icp_pairs) {
     // TODO: find closest point on the global map using flann
 
@@ -197,20 +197,16 @@ class FlannMatch {
   float* m_flatPoints;
 };
 
-void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
-                          const Landmarks landmarks,
-                          const ICPOptions icp_options, FlannMatch* flann_match,
-                          ICPPairs& icp_pairs) {
-  // TODO: find matches using icp ( flann + ceres)
-  // find_closest_points_brute_force(map, landmarks, icp_pairs);
-
-  std::vector<Eigen::Vector3f> local_map_points;
-
+void get_local_map_points(const Landmarks landmarks,
+                          std::vector<Eigen::Vector3f>& local_map_points) {
+  local_map_points.clear();
   for (auto landmark : landmarks) {
     Eigen::Vector3f pos = landmark.second.p.cast<float>();
     local_map_points.push_back(pos);
   }
+}
 
+Sophus::SE3d get_initial_guess() {
   //// BODY POSE1 WRT WORLD FROM GROUND TRUTH FILE
   // Sensor extrinsics wrt. the body-frame. This is the transformation of the
   // tracking prima to the body frame.
@@ -270,8 +266,15 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
   /// initial guess
   // Sophus::SE3d final_result = T_body1_w.inverse() * T_body_cam;
+  return T_w_cam1;
+}
 
-  Sophus::SE3d initial_guess = T_w_cam1;
+void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
+                          std::vector<Eigen::Vector3f>& local_map_points,
+                          Sophus::SE3d& guess, const ICPOptions icp_options,
+                          FlannMatch* flann_match, ICPPairs& icp_pairs) {
+  // TODO: find matches using icp ( flann + ceres)
+  // find_closest_points_brute_force(map, landmarks, icp_pairs);
 
   /////// START ICP ////////
 
@@ -285,10 +288,9 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
   std::cout << " before transform_points " << std::endl
             << local_map_points[0] << std::endl;
 
-  transform_points(initial_guess, local_map_points);
+  transform_points(guess, local_map_points);
 
-  std::cout << "initial_guess " << std::endl
-            << initial_guess.matrix() << std::endl;
+  std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
 
   std::cout << " after transform_points " << std::endl
             << local_map_points[0] << std::endl;
@@ -347,8 +349,10 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
   std::cout << " final transformation " << std::endl
             << final_result.matrix() << std::endl;
 
+  guess = final_result * guess;
+
   std::cout << " final final transformation " << std::endl
-            << (final_result * initial_guess).matrix() << std::endl;
+            << guess.matrix() << std::endl;
 
   /*for (auto& pair : icp_pairs) {
     std::cout << " local and global point " << std::endl
@@ -357,9 +361,24 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
   }*/
 }
 
-void refine_matches(const std::vector<Eigen::Vector3f> map,
-                    const Landmarks landmarks, const Voxels voxels,
-                    ICPPairs& icp_pairs) {
+/*
+void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
+                          const Landmarks landmarks, Sophus::SE3d& guess,
+                          const ICPOptions icp_options,
+                          const FlannMatch* flann_match, ICPPairs& icp_pairs) {
+  // create local_map_points using landmarks
+  std::vector<Eigen::Vector3f> local_map_points;
+  get_local_map_points(landmarks, local_map_points);
+
+  // call find_initial_matches for local_map_points
+  find_initial_matches(global_map_points, local_map_points, guess, icp_options,
+                       flann_match, icp_pairs);
+}
+*/
+
+void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
+                    const std::vector<Eigen::Vector3f> local_map_points,
+                    const Voxels voxels, ICPPairs& icp_pairs) {
   // TODO: refine matches acc. to voxels
 }
 
@@ -367,14 +386,27 @@ void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,
                           const Landmarks landmarks, const Voxels voxels,
                           const ICPOptions icp_options, FlannMatch* flann_match,
                           ICPPairs& icp_pairs) {
+  // initial guess
+  // from ground truth for the first estimation, coarse guess
+  // from the previous iteration for other estimations
+  Sophus::SE3d guess = get_initial_guess();
+
+  // create local_map_points using landmarks
+  std::vector<Eigen::Vector3f> local_map_points;
+  get_local_map_points(landmarks, local_map_points);
+
   // there are around 2500 landmarks for max_num_kfs = 20 frames
   // bundle adjustment takes 1.0-1.5 seconds
   // one brute force mathing takes 30-35 seconds
   // one flann matching takes 0.25-0.45 seconds
-  find_initial_matches(global_map_points, landmarks, icp_options, flann_match,
-                       icp_pairs);
 
-  refine_matches(global_map_points, landmarks, voxels, icp_pairs);
+  // finds matches
+  // gets final ICP guess
+  // updates local_map_points
+  find_initial_matches(global_map_points, local_map_points, guess, icp_options,
+                       flann_match, icp_pairs);
+
+  refine_matches(global_map_points, local_map_points, voxels, icp_pairs);
 }
 
 }  // namespace visnav
