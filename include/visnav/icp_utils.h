@@ -32,6 +32,7 @@
 #include <ceres/ceres.h>
 
 #include <visnav/icp_ceres_utils.h>
+#include <visnav/voxel_utils.h>
 
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
@@ -376,10 +377,58 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
 }
 */
 
+// TODO: const Voxel gives error why?
+bool check_pair(const Eigen::Vector3f local_map_point, Voxel voxel) {
+  int Nmin = 10;
+  int Nsigma = 3;
+  if (voxel.N < Nmin) {
+    std::cerr << " not enough point " << std::endl;
+    return false;
+  }
+
+  Eigen::Vector3f local_map_point_transformed = voxel.T * local_map_point;
+  std::cout << " local_map_point_transformed " << std::endl
+            << local_map_point_transformed.transpose() << std::endl;
+  std::cout << " sigma " << std::endl
+            << Nsigma * voxel.sigma.transpose() << std::endl;
+
+  if (abs(local_map_point_transformed[0]) > Nsigma * voxel.sigma[0]) {
+    std::cerr << " first axis " << std::endl;
+    return false;
+  }
+  if (abs(local_map_point_transformed[1]) > Nsigma * voxel.sigma[1]) {
+    std::cerr << " second axis " << std::endl;
+    return false;
+  }
+  if (abs(local_map_point_transformed[2]) > Nsigma * voxel.sigma[2]) {
+    std::cerr << " third axis " << std::endl;
+    return false;
+  }
+
+  std::cout << " OK " << std::endl;
+  return true;
+}
+
+// TODO: const Voxels gives error why?
 void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
                     const std::vector<Eigen::Vector3f> local_map_points,
-                    const Voxels voxels, ICPPairs& icp_pairs) {
+                    Voxels voxels, ICPPairs& icp_pairs) {
   // TODO: refine matches acc. to voxels
+  Eigen::Vector3f voxel_center;
+  double resolution = 1.0;  // TODO: ADD parameter
+  for (auto& pair : icp_pairs) {
+    find_voxel_center(local_map_points[pair.first], resolution, voxel_center);
+    std::cout << " local point " << std::endl
+              << local_map_points[pair.first].transpose() << std::endl;
+    std::cout << " global point " << std::endl
+              << global_map_points[pair.second].transpose() << std::endl;
+    std::cout << " voxel center " << std::endl
+              << voxel_center.transpose() << std::endl;
+
+    if (!check_pair(local_map_points[pair.first], voxels[voxel_center])) {
+      pair.second = -1;
+    }
+  }
 }
 
 void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,
