@@ -335,7 +335,7 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // std::endl;
     final_result = incremental_result * final_result;
     // for debug
-    //std::cout << " transformation " << std::endl
+    // std::cout << " transformation " << std::endl
     //          << final_result.matrix() << std::endl;
     std::cout << " transformation " << std::endl
               << final_result.translation().transpose() << std::endl;
