@@ -86,8 +86,10 @@ void lidar_map_adjustment(const std::vector<Eigen::Vector3f> global_map_points,
   Sophus::SE3d T_g_l_final = (T_c_g.inverse() * S_g_l * T_c_g) * T_g_l;
 
   std::cout << " S_g_l " << std::endl << S_g_l.matrix() << std::endl;
-  std::cout << " T_g_l_final " << std::endl << T_g_l_final.matrix() << std::endl;
-  std::cout << " T_g_l_final inverse " << std::endl << T_g_l_final.inverse().matrix() << std::endl;
+  std::cout << " T_g_l_final " << std::endl
+            << T_g_l_final.matrix() << std::endl;
+  std::cout << " T_g_l_final inverse " << std::endl
+            << T_g_l_final.inverse().matrix() << std::endl;
 }
 
 }  // namespace visnav

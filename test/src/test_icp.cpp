@@ -41,14 +41,13 @@ int main() {
 
   pcl::PLYReader Reader;
 
+  std::cout << " loading point cloud file takes time..." << std::endl;
+
   if (Reader.read(lidar_data_path, *global_map) == -1)  //* load the file
   {
     PCL_ERROR("Couldn't read file %f \n", lidar_data_path);
     // return (-1);
   }
-
-  std::cerr << " first point " << global_map->at(0).x << " "
-            << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
 
   for (std::size_t i = 0; i < global_map->size(); i++) {
     global_map_points.push_back(global_map->at(i).getVector3fMap());
@@ -87,28 +86,23 @@ int main() {
   // build index
   flann_match->buildIndex(global_map_points);
 
-  /////////// ICP options ///////////
-
-  ICPOptions icp_options;
-  // TODO: define icp_options
-
-  ICPPairs icp_pairs;
-
   /////////// initial guess ///////////
 
   Eigen::Vector3d initial_t;
-  initial_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
+  initial_t << 0.0, 0.0, 0.0;  // Eigen::Vector3d::Zero()
 
   Eigen::Matrix3d initial_R;
   double rot2 = 0;  /// 180 * 3.14;
   initial_R << cos(rot2), -sin(rot2), 0.0, sin(rot2), cos(rot2), 0.0, 0.0, 0.0,
       1.0;  // Eigen::Matrix3d::Identity()
 
+  ICPOptions icp_options;
   // icp_options.guess = Sophus::SE3d(initial_R, initial_t);
   icp_options.guess =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
   /////////// ICP SETUP ///////////
+  ICPPairs icp_pairs;
 
   clock_t begin = clock();
 

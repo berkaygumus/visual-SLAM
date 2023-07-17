@@ -15,7 +15,7 @@
 
 #include <visnav/common_types.h>
 
-#include <visnav/icp_utils.h>
+#include <visnav/icp_flann_utils.h>
 
 #include <visnav/serialization.h>
 
@@ -38,14 +38,16 @@ int main() {
 
   pcl::PLYReader Reader;
 
+  std::cout << " loading point cloud file takes time..." << std::endl;
+
   if (Reader.read(lidar_data_path, *global_map) == -1)  //* load the file
   {
     PCL_ERROR("Couldn't read file %f \n", lidar_data_path);
     // return (-1);
   }
 
-  std::cerr << " first point " << global_map->at(0).x << " "
-            << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
+  // std::cerr << " first point " << global_map->at(0).x << " "
+  //         << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
 
   for (std::size_t i = 0; i < global_map->size(); i++) {
     global_map_points.push_back(global_map->at(i).getVector3fMap());
@@ -61,6 +63,10 @@ int main() {
 
   ICPPairs icp_pairs;
 
+  std::cout << std::endl << " data is being created for the test" << std::endl;
+  std::cout << " source is the subset of target" << std::endl;
+  std::cout << " pairs have to be [i, 1000i]" << std::endl << std::endl;
+
   std::vector<Eigen::Vector3f> local_map_points;
 
   for (int i = 0; i < 2500; i++) {
@@ -71,7 +77,8 @@ int main() {
   clock_t begin = clock();
 
   /// start FLANN
-
+  std::cout << " Searching kd_tree for " << local_map_points.size()
+            << " source points" << std::endl;
   flann_match->findMatches(local_map_points, icp_pairs);
 
   /// end FLANN
@@ -82,15 +89,17 @@ int main() {
             << std::endl;
 
   // for debug
-  std::cout << " pairs up to 200" << std::endl;
+  std::cout << " pairs up to 20" << std::endl;
   int ttt = 0;
   for (auto& pair : icp_pairs) {
-    std::cout << " local and global point " << std::endl;
-    std::cout << pair.first << " " << pair.second << std::endl;
+    std::cout << std::endl
+              << " local and global point " << pair.first << " " << pair.second
+              << std::endl;
     std::cout << local_map_points[pair.first].transpose() << std::endl;
     std::cout << global_map_points[pair.second].transpose() << std::endl;
 
-    if (ttt > 200) {
+    ttt++;
+    if (ttt > 20) {
       break;
     }
   }
