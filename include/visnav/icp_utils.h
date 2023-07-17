@@ -199,15 +199,6 @@ class FlannMatch {
   float* m_flatPoints;
 };
 
-void get_local_map_points(const Landmarks landmarks,
-                          std::vector<Eigen::Vector3f>& local_map_points) {
-  local_map_points.clear();
-  for (auto landmark : landmarks) {
-    Eigen::Vector3f pos = landmark.second.p.cast<float>();
-    local_map_points.push_back(pos);
-  }
-}
-
 Sophus::SE3d get_initial_guess() {
   //// BODY POSE1 WRT WORLD FROM GROUND TRUTH FILE
   // Sensor extrinsics wrt. the body-frame. This is the transformation of the
@@ -420,6 +411,10 @@ void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
   // TODO: refine matches acc. to voxels
   Eigen::Vector3f voxel_center;
   double resolution = 1.0;  // TODO: ADD parameter
+  int pair_size = icp_pairs.size();
+  std::cout << " pair size " << pair_size << std::endl;
+
+  ICPPairs refined_icp_pairs;
   for (auto& pair : icp_pairs) {
     find_voxel_center(local_map_points[pair.first], resolution, voxel_center);
     std::cout << " local point " << std::endl
@@ -431,8 +426,16 @@ void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
 
     if (!check_pair(local_map_points[pair.first], voxels[voxel_center])) {
       pair.second = -1;
+      pair_size--;
+    } else {
+      refined_icp_pairs.push_back(pair);
     }
   }
+
+  icp_pairs = refined_icp_pairs;
+
+  std::cout << "refined pair size " << pair_size << " " << icp_pairs.size()
+            << std::endl;
 }
 
 void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,

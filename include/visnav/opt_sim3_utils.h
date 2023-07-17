@@ -27,18 +27,38 @@
 #include <pcl/point_types.h>
 
 #include <visnav/common_types.h>
+#include <visnav/icp_utils.h>
 
 namespace visnav {
 
-void sim3_optimize(const pcl::Indices map_indices,
-                   const pcl::Indices keypoint_indices, Cameras& cameras_opt,
-                   Landmarks& landmarks_opt) {
+void transform_points(
+    const std::vector<Eigen::Vector3f> global_map_points,
+    const std::vector<Eigen::Vector3f> local_map_points,
+    std::vector<Eigen::Vector3f>& global_map_points_wrt_keyframe,
+    std::vector<Eigen::Vector3f>& local_map_points_wrt_keyframe,
+    const Sophus::SE3d T_c_g, const ICPPairs icp_pairs) {
+  global_map_points_wrt_keyframe.clear();
+  local_map_points_wrt_keyframe.clear();
+  for (auto& pair : icp_pairs) {
+    local_map_points_wrt_keyframe.push_back(local_map_points[pair.first]);
+    global_map_points_wrt_keyframe.push_back(global_map_points[pair.second]);
+  }
+
+  transform_points(T_c_g, local_map_points_wrt_keyframe);
+  transform_points(T_c_g, global_map_points_wrt_keyframe);
+}
+
+void sim3_optimize(
+    const std::vector<Eigen::Vector3f> global_map_points_wrt_keyframe,
+    std::vector<Eigen::Vector3f>& local_map_points_wrt_keyframe,
+    Sophus::SE3d& S_g_l) {
   // TODO: add opt parameters
-  // add Tc
-  UNUSED(map_indices);
-  UNUSED(keypoint_indices);
-  UNUSED(cameras_opt);
-  UNUSED(landmarks_opt);
+  ICPPairs icp_pairs;
+  for (int i = 0; i < int(local_map_points_wrt_keyframe.size()); i++) {
+    icp_pairs.push_back(std::make_pair(i, i));
+  }
+  estimate_pose(global_map_points_wrt_keyframe, local_map_points_wrt_keyframe,
+                icp_pairs, S_g_l);
 }
 
 }  // namespace visnav

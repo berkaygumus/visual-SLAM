@@ -1111,8 +1111,9 @@ void optimize() {
     icp_options.guess = get_initial_guess();
 
     begin = clock();
-    lidar_map_adjustment(global_map_points, cameras_opt, landmarks_opt, voxels,
-                         icp_options, flann_match);
+    FrameCamId current_keyframe = {fid, 0};
+    lidar_map_adjustment(global_map_points, cameras_opt, current_keyframe,
+                         landmarks_opt, voxels, icp_options, flann_match);
 
     end = clock();
     elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
