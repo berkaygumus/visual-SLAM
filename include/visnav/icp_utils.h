@@ -49,6 +49,7 @@ struct ICPOptions {
   double min_dist;
   double max_dist;
   int max_itr;
+  Sophus::SE3d guess;
   // initial guess
   // threshol error
 };
@@ -272,13 +273,13 @@ Sophus::SE3d get_initial_guess() {
 
 void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
                           std::vector<Eigen::Vector3f>& local_map_points,
-                          Sophus::SE3d& guess, const ICPOptions icp_options,
-                          FlannMatch* flann_match, ICPPairs& icp_pairs) {
+                          ICPOptions& icp_options, FlannMatch* flann_match,
+                          ICPPairs& icp_pairs) {
   // TODO: find matches using icp ( flann + ceres)
   // find_closest_points_brute_force(map, landmarks, icp_pairs);
 
-  // TODO: icp_options
-  UNUSED(icp_options);
+  // icp_options
+  Sophus::SE3d& guess = icp_options.guess;
 
   /////// START ICP ////////
 
@@ -435,18 +436,9 @@ void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
 }
 
 void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,
-                          const Landmarks landmarks, const Voxels voxels,
-                          const ICPOptions icp_options, FlannMatch* flann_match,
-                          ICPPairs& icp_pairs) {
-  // initial guess
-  // from ground truth for the first estimation, coarse guess
-  // from the previous iteration for other estimations
-  Sophus::SE3d guess = get_initial_guess();
-
-  // create local_map_points using landmarks
-  std::vector<Eigen::Vector3f> local_map_points;
-  get_local_map_points(landmarks, local_map_points);
-
+                          std::vector<Eigen::Vector3f>& local_map_points,
+                          const Voxels voxels, ICPOptions& icp_options,
+                          FlannMatch* flann_match, ICPPairs& icp_pairs) {
   // there are around 2500 landmarks for max_num_kfs = 20 frames
   // bundle adjustment takes 1.0-1.5 seconds
   // one brute force mathing takes 30-35 seconds
@@ -455,7 +447,7 @@ void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,
   // finds matches
   // gets final ICP guess
   // updates local_map_points
-  find_initial_matches(global_map_points, local_map_points, guess, icp_options,
+  find_initial_matches(global_map_points, local_map_points, icp_options,
                        flann_match, icp_pairs);
 
   refine_matches(global_map_points, local_map_points, voxels, icp_pairs);

@@ -63,9 +63,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
 
-#include <visnav/voxel_utils.h>
-#include <visnav/icp_utils.h>
-#include <visnav/opt_sim3_utils.h>
+#include <visnav/lidar_map_localization_utils.h>
+//#include <visnav/voxel_utils.h>
+//#include <visnav/icp_utils.h>
+//#include <visnav/opt_sim3_utils.h>
 
 #include <visnav/gui_helper.h>
 #include <visnav/tracks.h>
@@ -1104,17 +1105,18 @@ void optimize() {
 
     ICPOptions icp_options;
     // TODO: define icp_options
-
-    ICPPairs icp_pairs;
+    // initial guess
+    // from ground truth for the first estimation, coarse guess
+    // from the previous iteration for other estimations
+    icp_options.guess = get_initial_guess();
 
     begin = clock();
-
-    find_refined_matches(global_map_points, landmarks_opt, voxels, icp_options,
-                         flann_match, icp_pairs);
+    lidar_map_adjustment(global_map_points, cameras_opt, landmarks_opt, voxels,
+                         icp_options, flann_match);
 
     end = clock();
     elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "find_refined_matches Completed in " << elapsedSecs
+    std::cout << "lidar_map_adjustment completed in " << elapsedSecs
               << " seconds." << std::endl;
 
     // alignment

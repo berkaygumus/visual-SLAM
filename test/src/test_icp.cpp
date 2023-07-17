@@ -104,15 +104,15 @@ int main() {
   initial_R << cos(rot2), -sin(rot2), 0.0, sin(rot2), cos(rot2), 0.0, 0.0, 0.0,
       1.0;  // Eigen::Matrix3d::Identity()
 
-  // Sophus::SE3d guess = Sophus::SE3d(initial_R, initial_t);
-  Sophus::SE3d guess =
+  // icp_options.guess = Sophus::SE3d(initial_R, initial_t);
+  icp_options.guess =
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
   /////////// ICP SETUP ///////////
 
   clock_t begin = clock();
 
-  find_initial_matches(global_map_points, local_map_points, guess, icp_options,
+  find_initial_matches(global_map_points, local_map_points, icp_options,
                        flann_match, icp_pairs);
 
   clock_t end = clock();
