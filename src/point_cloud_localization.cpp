@@ -741,7 +741,7 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
     //          << global_map->at(1).y << " " << global_map->at(2).z <<
     //          std::endl;
 
-    for (int i = 0; i < global_map->size(); i++) {
+    for (std::size_t i = 0; i < global_map->size(); i++) {
       global_map_points.push_back(global_map->at(i).getVector3fMap());
     }
 

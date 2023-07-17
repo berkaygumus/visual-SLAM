@@ -63,7 +63,7 @@ void find_closest_points_brute_force(const std::vector<Eigen::Vector3f> map,
     int closest_index = -1;
     double closest_dist = 2;
     double dist;
-    for (int i = 0; i < map.size(); i++) {
+    for (int i = 0; i < int(map.size()); i++) {
       dist = (pos - map[i].cast<double>()).norm();
       // Vector3f{ vertex.position.x(), vertex.position.y(), vertex.position.z()
       // }
@@ -165,7 +165,7 @@ class FlannMatch {
 
     float m_maxDistance = 2;
 
-    for (int i = 0; i < nMatches; i++) {
+    for (int i = 0; i < int(nMatches); i++) {
       if (*distances[i] <= m_maxDistance) {
         // matches.push_back(Match{*indices[i], 1.f});
         icp_pairs.push_back(std::make_pair(i, *indices[i]));
@@ -276,6 +276,9 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
                           FlannMatch* flann_match, ICPPairs& icp_pairs) {
   // TODO: find matches using icp ( flann + ceres)
   // find_closest_points_brute_force(map, landmarks, icp_pairs);
+
+  // TODO: icp_options
+  UNUSED(icp_options);
 
   /////// START ICP ////////
 

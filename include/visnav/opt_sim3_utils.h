@@ -35,6 +35,10 @@ void sim3_optimize(const pcl::Indices map_indices,
                    Landmarks& landmarks_opt) {
   // TODO: add opt parameters
   // add Tc
+  UNUSED(map_indices);
+  UNUSED(keypoint_indices);
+  UNUSED(cameras_opt);
+  UNUSED(landmarks_opt);
 }
 
 }  // namespace visnav

@@ -80,8 +80,7 @@ void set_voxel_points(const std::vector<Eigen::Vector3f> global_map_points,
   }
 }
 
-void perform_pca(const std::vector<Eigen::Vector3f> global_map_points,
-                 Voxels& voxels) {
+void perform_pca(Voxels& voxels) {
   std::cout << " voxels size " << voxels.size() << std::endl;
   for (auto& v : voxels) {
     int n = v.second.points.size();
@@ -140,7 +139,7 @@ void perform_pca(const std::vector<Eigen::Vector3f> global_map_points,
     // with previous indexes
     // corresponding to each element
     std::cout << "eigenvalues and index" << std::endl;
-    for (int i = 0; i < eigen_value_index.size(); i++) {
+    for (std::size_t i = 0; i < eigen_value_index.size(); i++) {
       std::cout << eigen_value_index[i].first << "\t"
                 << eigen_value_index[i].second << std::endl;
     }
@@ -183,7 +182,7 @@ void calculate_voxel_distribution(
   // TODO: calculate voxel distribution
   std::cout << " res: " << resolution << std::endl;
   set_voxel_points(global_map_points, resolution, voxels);
-  perform_pca(global_map_points, voxels);
+  perform_pca(voxels);
 }
 
 }  // namespace visnav

@@ -29,7 +29,7 @@ std::vector<Eigen::Vector3f> global_map_points;
 /// voxel distribution
 Voxels voxels;
 
-int main(int argc, char** argv) {
+int main() {
   /////////////////////// load data ////////////////////////
 
   std::string dataset_path = "data/V1_01_easy/mav0";
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   std::cerr << " first point " << global_map->at(0).x << " "
             << global_map->at(1).y << " " << global_map->at(2).z << std::endl;
 
-  for (int i = 0; i < global_map->size(); i++) {
+  for (std::size_t i = 0; i < global_map->size(); i++) {
     global_map_points.push_back(global_map->at(i).getVector3fMap());
   }
 
