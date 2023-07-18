@@ -137,17 +137,17 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
       Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
   // for debug
-  std::cout << " before transform_points " << std::endl
-            << local_map_points[0] << std::endl;
+  // std::cout << " before transform_points " << std::endl
+  //          << local_map_points[0] << std::endl;
 
   transform_points(guess, local_map_points);
 
-  std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
+  // std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
 
-  std::cout << " after transform_points " << std::endl
-            << local_map_points[0] << std::endl;
+  // std::cout << " after transform_points " << std::endl
+  //          << local_map_points[0] << std::endl;
 
-  int itr_num = 30;
+  int itr_num = icp_options.max_itr;
   for (int i = 0; i < itr_num; i++) {
     std::cout << " ///////////// itreation " << i << " ////////////////////"
               << std::endl;
@@ -160,10 +160,10 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // for (int i = 0; i < 100; i++) {
     //  icp_pairs.push_back(std::make_pair(i, i));
     //}
-    // std::cout << " match size " << icp_pairs.size() << std::endl;
+    std::cout << " match size " << icp_pairs.size() << std::endl;
 
     // for debug
-    /*
+
     std::cout << " pairs local-global" << std::endl;
     int ttt = 0;
     for (auto& pair : icp_pairs) {
@@ -172,11 +172,10 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
       std::cout << global_map_points[pair.second].transpose() << std::endl
                 << std::endl;
       ttt++;
-      if (ttt > 200) {
+      if (ttt > 5) {
         break;
       }
     }
-    */
 
     estimate_pose(global_map_points, local_map_points, icp_pairs,
                   incremental_result);
@@ -198,12 +197,14 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // std::endl;
   }
 
-  std::cout << " final transformation " << std::endl
+  std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
+
+  std::cout << " transformation after initial guess " << std::endl
             << final_result.matrix() << std::endl;
 
   guess = final_result * guess;
 
-  std::cout << " final final transformation " << std::endl
+  std::cout << " final transformation " << std::endl
             << guess.matrix() << std::endl;
 
   /*for (auto& pair : icp_pairs) {
@@ -240,7 +241,7 @@ bool check_pair(const Eigen::Vector3f local_map_point, Voxel voxel) {
   Eigen::Vector3f local_map_point_transformed = voxel.T * local_map_point;
   std::cout << " local_map_point_transformed " << std::endl
             << local_map_point_transformed.transpose() << std::endl;
-  std::cout << " sigma " << std::endl
+  std::cout << " 3 *sigma " << std::endl
             << Nsigma * voxel.sigma.transpose() << std::endl;
 
   if (abs(local_map_point_transformed[0]) > Nsigma * voxel.sigma[0]) {
@@ -256,7 +257,7 @@ bool check_pair(const Eigen::Vector3f local_map_point, Voxel voxel) {
     return false;
   }
 
-  std::cout << " OK " << std::endl;
+  std::cout << " OK " << std::endl << std::endl;
   return true;
 }
 

@@ -66,7 +66,7 @@ int main() {
   actual_t << 0.0, 1.0, 1.0;  // Eigen::Vector3d::Zero()
 
   Eigen::Matrix3d actual_R;
-  double rot = 0;  /// 180 * 3.14;
+  double rot = 10 / 180 * 3.14;
   actual_R << cos(rot), -sin(rot), 0.0, sin(rot), cos(rot), 0.0, 0.0, 0.0,
       1.0;  // Eigen::Matrix3d::Identity()
 
@@ -75,7 +75,7 @@ int main() {
   // Sophus::SE3d actual_transformation =
   //    Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
 
-  transform_points(actual_transformation, local_map_points);
+  transform_points(actual_transformation.inverse(), local_map_points);
 
   /////////// target and source point pairs ///////////
   ICPPairs icp_pairs;
@@ -128,7 +128,7 @@ int main() {
             << std::endl;
 
   std::cout << "actual transformation T_g_l" << std::endl
-            << initial_guess.matrix() << std::endl;
+            << actual_transformation.matrix() << std::endl;
 
   std::cout << " final transformation T_g_l" << std::endl
             << initial_guess.matrix() << std::endl;

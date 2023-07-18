@@ -1108,7 +1108,8 @@ void optimize() {
     // initial guess
     // from ground truth for the first estimation, coarse guess
     // from the previous iteration for other estimations
-    icp_options.guess = get_initial_guess();
+    icp_options.guess = Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero()); //get_initial_guess();
+    icp_options.max_itr = 100;
 
     begin = clock();
     FrameCamId current_keyframe = {fid, 0};
