@@ -916,7 +916,6 @@ bool next_step() {
 
     compute_projections();
 
-    current_frame++;
     std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
     Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
     Eigen::Quaterniond q(rot_q);
@@ -924,6 +923,8 @@ bool next_step() {
             << "," << current_pose.matrix()(1, 3) << ","
             << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
             << "," << q.y() << "," << q.z() << std::endl;
+
+    current_frame++;
     return true;
   } else {
     FrameCamId fcidl(current_frame, 0), fcidr(current_frame, 1);
@@ -978,7 +979,6 @@ bool next_step() {
     change_display_to_image(fcidl);
     change_display_to_image(fcidr);
 
-    current_frame++;
     std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
     Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
     Eigen::Quaterniond q(rot_q);
@@ -986,6 +986,7 @@ bool next_step() {
             << "," << current_pose.matrix()(1, 3) << ","
             << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
             << "," << q.y() << "," << q.z() << std::endl;
+    current_frame++;
     return true;
   }
 }
