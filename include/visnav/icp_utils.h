@@ -71,6 +71,22 @@ Sophus::SE3d get_initial_guess() {
   Eigen::Vector3d t_body1_w;
   t_body1_w << 0.878612, 2.142470, 0.947262;
 
+  //// vicon
+  // p_RS_R_x [m],p_RS_R_y [m],p_RS_R_z [m],
+  // 0.78680237507119299,2.1766263084402229,1.0620383602617547,
+  // q_RS_w [],q_RS_x [],q_RS_y [],q_RS_z []
+  // 0.9932172094084879,-0.0092907273683985395,0.022668607879467291,0.11366350133877155
+  /*
+    Eigen::Quaterniond q_body1_w;
+    q_body1_w.x() = -0.0092907273683985395;
+    q_body1_w.y() = 0.022668607879467291;
+    q_body1_w.z() = 0.11366350133877155;
+    q_body1_w.w() = 0.9932172094084879;
+
+    Eigen::Vector3d t_body1_w;
+    t_body1_w << 0.78680237507119299, 2.1766263084402229, 1.0620383602617547;
+  */
+
   Eigen::Matrix3d R_body1_w = q_body1_w.normalized().toRotationMatrix();
 
   Sophus::SE3d T_body1_w = Sophus::SE3d(R_body1_w, t_body1_w);
@@ -160,10 +176,11 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // for (int i = 0; i < 100; i++) {
     //  icp_pairs.push_back(std::make_pair(i, i));
     //}
-    std::cout << " match size " << icp_pairs.size() << std::endl;
+    // std::cout << " match size " << icp_pairs.size() << std::endl;
 
     // for debug
 
+    /*
     std::cout << " pairs local-global" << std::endl;
     int ttt = 0;
     for (auto& pair : icp_pairs) {
@@ -176,6 +193,7 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
         break;
       }
     }
+    */
 
     estimate_pose(global_map_points, local_map_points, icp_pairs,
                   incremental_result);
@@ -190,22 +208,22 @@ void find_initial_matches(const std::vector<Eigen::Vector3f> global_map_points,
     // for debug
     // std::cout << " transformation " << std::endl
     //          << final_result.matrix() << std::endl;
-    std::cout << " transformation " << std::endl
-              << final_result.translation().transpose() << std::endl;
+    // std::cout << " transformation " << std::endl
+    //          << final_result.translation().transpose() << std::endl;
 
     // std::cout << " after point " << std::endl << local_map_points[0] <<
     // std::endl;
   }
 
-  std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
+  // std::cout << "initial_guess " << std::endl << guess.matrix() << std::endl;
 
-  std::cout << " transformation after initial guess " << std::endl
-            << final_result.matrix() << std::endl;
+  // std::cout << " transformation after initial guess " << std::endl
+  //          << final_result.matrix() << std::endl;
 
   guess = final_result * guess;
 
-  std::cout << " final transformation " << std::endl
-            << guess.matrix() << std::endl;
+  // std::cout << " final transformation " << std::endl
+  //          << guess.matrix() << std::endl;
 
   /*for (auto& pair : icp_pairs) {
     std::cout << " local and global point " << std::endl
@@ -234,30 +252,30 @@ bool check_pair(const Eigen::Vector3f local_map_point, Voxel voxel) {
   int Nmin = 10;
   int Nsigma = 3;
   if (voxel.N < Nmin) {
-    std::cerr << " not enough point " << std::endl;
+    // std::cerr << " not enough point " << std::endl;
     return false;
   }
 
   Eigen::Vector3f local_map_point_transformed = voxel.T * local_map_point;
-  std::cout << " local_map_point_transformed " << std::endl
-            << local_map_point_transformed.transpose() << std::endl;
-  std::cout << " 3 *sigma " << std::endl
-            << Nsigma * voxel.sigma.transpose() << std::endl;
+  // std::cout << " local_map_point_transformed " << std::endl
+  //          << local_map_point_transformed.transpose() << std::endl;
+  // std::cout << " 3 *sigma " << std::endl
+  //         << Nsigma * voxel.sigma.transpose() << std::endl;
 
   if (abs(local_map_point_transformed[0]) > Nsigma * voxel.sigma[0]) {
-    std::cerr << " first axis " << std::endl;
+    // std::cerr << " first axis " << std::endl;
     return false;
   }
   if (abs(local_map_point_transformed[1]) > Nsigma * voxel.sigma[1]) {
-    std::cerr << " second axis " << std::endl;
+    // std::cerr << " second axis " << std::endl;
     return false;
   }
   if (abs(local_map_point_transformed[2]) > Nsigma * voxel.sigma[2]) {
-    std::cerr << " third axis " << std::endl;
+    // std::cerr << " third axis " << std::endl;
     return false;
   }
 
-  std::cout << " OK " << std::endl << std::endl;
+  // std::cout << " OK " << std::endl << std::endl;
   return true;
 }
 
@@ -274,13 +292,14 @@ void refine_matches(const std::vector<Eigen::Vector3f> global_map_points,
   ICPPairs refined_icp_pairs;
   for (auto& pair : icp_pairs) {
     find_voxel_center(local_map_points[pair.first], resolution, voxel_center);
+    /*
     std::cout << " local point " << std::endl
               << local_map_points[pair.first].transpose() << std::endl;
     std::cout << " global point " << std::endl
               << global_map_points[pair.second].transpose() << std::endl;
     std::cout << " voxel center " << std::endl
               << voxel_center.transpose() << std::endl;
-
+    */
     if (!check_pair(local_map_points[pair.first], voxels[voxel_center])) {
       pair.second = -1;
       pair_size--;
@@ -304,13 +323,26 @@ void find_refined_matches(const std::vector<Eigen::Vector3f> global_map_points,
   // one brute force mathing takes 30-35 seconds
   // one flann matching takes 0.25-0.45 seconds
 
+  // time
+  clock_t begin, end;
+  begin = clock();
+
   // finds matches
   // gets final ICP guess
   // updates local_map_points
   find_initial_matches(global_map_points, local_map_points, icp_options,
                        flann_match, icp_pairs);
+  end = clock();
+  double elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+  std::cout << "find_initial_matches completed in " << elapsedSecs
+            << " seconds." << std::endl;
 
+  begin = clock();
   refine_matches(global_map_points, local_map_points, voxels, icp_pairs);
+  end = clock();
+  elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+  std::cout << "refine_matches completed in " << elapsedSecs << " seconds."
+            << std::endl;
 }
 
 }  // namespace visnav

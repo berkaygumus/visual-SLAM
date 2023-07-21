@@ -77,7 +77,7 @@ int main() {
   q_R.x() = 0.0;
   q_R.y() = 0.0;
   q_R.z() = 0.1736482;
-  q_R.w() =  0.9848078;
+  q_R.w() = 0.9848078;
 
   Eigen::Matrix3d actual_R = q_R.normalized().toRotationMatrix();
   /*

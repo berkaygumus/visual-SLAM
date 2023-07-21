@@ -63,6 +63,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
 
+#include <fstream>
+
 #include <visnav/lidar_map_localization_utils.h>
 //#include <visnav/voxel_utils.h>
 //#include <visnav/icp_utils.h>
@@ -156,6 +158,9 @@ FlannMatch* flann_match;
 
 /// voxel distribution
 Voxels voxels;
+
+// estimated trajectory file
+std::ofstream outfile;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// GUI parameters
@@ -756,6 +761,9 @@ void load_data(const std::string& dataset_path, const std::string& calib_path) {
     // std::pair<Eigen::Vector3d, voxel_dist> voxels;
 
     calculate_voxel_distribution(global_map_points, resolution, voxels);
+
+    outfile.open("trajectory.txt", std::ios_base::app);  // std::ios_base::app
+    outfile << "your data" << std::endl;
   }
 
   const std::string timestams_path = dataset_path + "/cam0/data.csv";
@@ -909,6 +917,13 @@ bool next_step() {
     compute_projections();
 
     current_frame++;
+    std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
+    Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
+    Eigen::Quaterniond q(rot_q);
+    outfile << timestamps[current_frame] << "," << current_pose.matrix()(0, 3)
+            << "," << current_pose.matrix()(1, 3) << ","
+            << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
+            << "," << q.y() << "," << q.z() << std::endl;
     return true;
   } else {
     FrameCamId fcidl(current_frame, 0), fcidr(current_frame, 1);
@@ -964,6 +979,13 @@ bool next_step() {
     change_display_to_image(fcidr);
 
     current_frame++;
+    std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
+    Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
+    Eigen::Quaterniond q(rot_q);
+    outfile << timestamps[current_frame] << "," << current_pose.matrix()(0, 3)
+            << "," << current_pose.matrix()(1, 3) << ","
+            << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
+            << "," << q.y() << "," << q.z() << std::endl;
     return true;
   }
 }
@@ -1102,25 +1124,32 @@ void optimize() {
     TODO: result map and keypoints types? Ptr or landmarks/cameras
 
     */
+    /*
+        ICPOptions icp_options;
+        // TODO: define icp_options
+        // initial guess
+        // from ground truth for the first estimation, coarse guess
+        // from the previous iteration for other estimations
+        // Eigen::Matrix3d Rot;
+        // Rot << 0, 0, 1, -1, 0, 0, 0, -1, 0;
+        // Eigen::Vector3d t;
+        // t << 0.5, 0.5, 0.5;
+        icp_options.guess = get_initial_guess();
+        // Sophus::SE3d(Eigen::Matrix3d::Identity(),
+        //            Eigen::Vector3d::Zero());  //
+        // Sophus::SE3d(Rot, t);  //
+        icp_options.max_itr = 4;
 
-    ICPOptions icp_options;
-    // TODO: define icp_options
-    // initial guess
-    // from ground truth for the first estimation, coarse guess
-    // from the previous iteration for other estimations
-    icp_options.guess = Sophus::SE3d(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero()); //get_initial_guess();
-    icp_options.max_itr = 100;
+        begin = clock();
+        FrameCamId current_keyframe = {fid, 0};
+        lidar_map_adjustment(global_map_points, cameras_opt, current_keyframe,
+                             landmarks_opt, voxels, icp_options, flann_match);
 
-    begin = clock();
-    FrameCamId current_keyframe = {fid, 0};
-    lidar_map_adjustment(global_map_points, cameras_opt, current_keyframe,
-                         landmarks_opt, voxels, icp_options, flann_match);
-
-    end = clock();
-    elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
-    std::cout << "lidar_map_adjustment completed in " << elapsedSecs
-              << " seconds." << std::endl;
-
+        end = clock();
+        elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+        std::cout << "lidar_map_adjustment completed in " << elapsedSecs
+                  << " seconds." << std::endl;
+    */
     // alignment
     // sim3 optmization with ceres
 
