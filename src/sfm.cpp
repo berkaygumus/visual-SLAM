@@ -1250,7 +1250,8 @@ void match_stereo() {
 
     num_inliers += md.inliers.size();
 
-    feature_matches[std::make_pair(fcid1, fcid2)] = md;
+    // feature_matches[std::make_pair(fcid1, fcid2)] = md;
+    feature_matches.insert(std::make_pair(std::make_pair(fcid1, fcid2), md));
   }
 
   std::cerr << "Matched " << num_images << " stereo pairs with " << num_inliers
@@ -1314,7 +1315,8 @@ void match_all() {
                               relative_pose_ransac_min_inliers, md);
           }
 
-          feature_matches[std::make_pair(id1, id2)] = md;
+          // feature_matches[std::make_pair(id1, id2)] = md;
+          feature_matches.insert(std::make_pair(std::make_pair(id1, id2), md));
         }
       });
 
@@ -1415,7 +1417,8 @@ void match_bow() {
                               relative_pose_ransac_min_inliers, md);
           }
 
-          feature_matches[std::make_pair(id1, id2)] = md;
+          // feature_matches[std::make_pair(id1, id2)] = md;
+          feature_matches.insert(std::make_pair(std::make_pair(id1, id2), md));
         }
       });
 

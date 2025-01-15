@@ -48,6 +48,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pangolin/image/typed_image.h>
 #include <pangolin/pangolin.h>
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/io/ply_io.h>
+
 #include <CLI/CLI.hpp>
 
 #include <visnav/common_types.h>
@@ -58,6 +62,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visnav/map_utils.h>
 #include <visnav/matching_utils.h>
 #include <visnav/vo_utils.h>
+
+#include <fstream>
+
+#include <visnav/lidar_map_localization_utils.h>
+//#include <visnav/voxel_utils.h>
+//#include <visnav/icp_utils.h>
+//#include <visnav/opt_sim3_utils.h>
 
 #include <visnav/gui_helper.h>
 #include <visnav/tracks.h>
@@ -136,6 +147,20 @@ Landmarks old_landmarks;
 /// cameras, landmarks, and feature_tracks; used for visualization and
 /// determining outliers; indexed by images
 ImageProjections image_projections;
+
+/// lidar map
+pcl::PointCloud<pcl::PointXYZ>::Ptr global_map(
+    new pcl::PointCloud<pcl::PointXYZ>);
+std::vector<Eigen::Vector3f> global_map_points;
+
+// flann match object pointer
+FlannMatch* flann_match;
+
+/// voxel distribution
+Voxels voxels;
+
+// estimated trajectory file
+std::ofstream outfile;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// GUI parameters
@@ -707,6 +732,40 @@ void draw_scene() {
 
 // Load images, calibration, and features / matches if available
 void load_data(const std::string& dataset_path, const std::string& calib_path) {
+  {
+    const std::string lidar_data_path = dataset_path + "/pointcloud0/data.ply";
+
+    pcl::PLYReader Reader;
+
+    if (Reader.read(lidar_data_path, *global_map) == -1)  //* load the file
+    {
+      PCL_ERROR("Couldn't read file %f \n", lidar_data_path);
+      // return (-1);
+    }
+
+    // std::cerr << " first point " << global_map->at(0).x << " "
+    //          << global_map->at(1).y << " " << global_map->at(2).z <<
+    //          std::endl;
+
+    for (std::size_t i = 0; i < global_map->size(); i++) {
+      global_map_points.push_back(global_map->at(i).getVector3fMap());
+    }
+
+    // flann match pointer
+    flann_match = new FlannMatch();
+
+    // build index
+    flann_match->buildIndex(global_map_points);
+
+    double resolution = 1;  // 1 meter
+    // std::pair<Eigen::Vector3d, voxel_dist> voxels;
+
+    calculate_voxel_distribution(global_map_points, resolution, voxels);
+
+    outfile.open("trajectory.txt", std::ios_base::app);  // std::ios_base::app
+    outfile << "your data" << std::endl;
+  }
+
   const std::string timestams_path = dataset_path + "/cam0/data.csv";
 
   {
@@ -823,9 +882,7 @@ bool next_step() {
 
     feature_corners[fcidl] = kdl;
     feature_corners[fcidr] = kdr;
-    // feature_matches[std::make_pair(fcidl, fcidr)] = md_stereo;
-    feature_matches.insert(std::make_pair(std::make_pair(fcidl, fcidr), md_stereo));
-
+    feature_matches[std::make_pair(fcidl, fcidr)] = md_stereo;
 
     LandmarkMatchData md;
 
@@ -858,6 +915,14 @@ bool next_step() {
     change_display_to_image(fcidr);
 
     compute_projections();
+
+    std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
+    Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
+    Eigen::Quaterniond q(rot_q);
+    outfile << timestamps[current_frame] << "," << current_pose.matrix()(0, 3)
+            << "," << current_pose.matrix()(1, 3) << ","
+            << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
+            << "," << q.y() << "," << q.z() << std::endl;
 
     current_frame++;
     return true;
@@ -914,6 +979,13 @@ bool next_step() {
     change_display_to_image(fcidl);
     change_display_to_image(fcidr);
 
+    std::cout << " pose " << std::endl << current_pose.matrix() << std::endl;
+    Eigen::Matrix3d rot_q = current_pose.matrix().block(0, 0, 3, 3);
+    Eigen::Quaterniond q(rot_q);
+    outfile << timestamps[current_frame] << "," << current_pose.matrix()(0, 3)
+            << "," << current_pose.matrix()(1, 3) << ","
+            << current_pose.matrix()(2, 3) << "," << q.w() << "," << q.x()
+            << "," << q.y() << "," << q.z() << std::endl;
     current_frame++;
     return true;
   }
@@ -1003,8 +1075,87 @@ void optimize() {
   opt_thread.reset(new std::thread([fid, ba_options] {
     std::set<FrameCamId> fixed_cameras = {{fid, 0}, {fid, 1}};
 
+    clock_t begin = clock();
+
     bundle_adjustment(feature_corners, ba_options, fixed_cameras, calib_cam_opt,
                       cameras_opt, landmarks_opt);
+
+    clock_t end = clock();
+    double elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "bundle_adjustment Completed in " << elapsedSecs << " seconds."
+              << std::endl;
+
+    /*
+
+    * Monocular Camera Localization in 3D LiDAR Maps *
+
+    Subsequently, our method aligns the local reconstruction
+    whenever it is updated, i.e., a new keyframe is selected
+    by the camera tracking and added to the local mapping.
+    Since our method directly operates on the map maintained by ORB-SLAM,
+    the local mapping needs to be paused during the alignment.
+    Therefore, the alignment must run sufficiently fast in order to
+    avoid long interruptions that can cause the camera tracking to fail
+    since newly explored areas are not covered by the map.
+    */
+
+    // local reconstruction is updated
+
+    /*
+    Since our approach is not intended for global localization, a coarse
+    estimate for the transformation between this initial recon-
+    struction and the map is required.
+    */
+
+    // update the first local map acc. to known map for the first alignment
+    // TODO: how?
+    // should I check the ground truth data?
+
+    // try identity and gt with noise
+
+    // call icp function and get matches
+    // (keypoints from local and 3d points from known map)
+
+    // correspondence refinement ck -> ck’
+    // eliminate some matches using voxel distribution
+
+    /*
+    TODO: map and keypoints types are different
+    TODO: add initial guess from local map?
+    TODO: result map and keypoints types? Ptr or landmarks/cameras
+
+    */
+    /*
+        ICPOptions icp_options;
+        // TODO: define icp_options
+        // initial guess
+        // from ground truth for the first estimation, coarse guess
+        // from the previous iteration for other estimations
+        // Eigen::Matrix3d Rot;
+        // Rot << 0, 0, 1, -1, 0, 0, 0, -1, 0;
+        // Eigen::Vector3d t;
+        // t << 0.5, 0.5, 0.5;
+        icp_options.guess = get_initial_guess();
+        // Sophus::SE3d(Eigen::Matrix3d::Identity(),
+        //            Eigen::Vector3d::Zero());  //
+        // Sophus::SE3d(Rot, t);  //
+        icp_options.max_itr = 4;
+
+        begin = clock();
+        FrameCamId current_keyframe = {fid, 0};
+        lidar_map_adjustment(global_map_points, cameras_opt, current_keyframe,
+                             landmarks_opt, voxels, icp_options, flann_match);
+
+        end = clock();
+        elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
+        std::cout << "lidar_map_adjustment completed in " << elapsedSecs
+                  << " seconds." << std::endl;
+    */
+    // alignment
+    // sim3 optmization with ceres
+
+    // update keypoints
+    // update keyframe/camera poses
 
     opt_finished = true;
     opt_running = false;

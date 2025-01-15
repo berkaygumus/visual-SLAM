@@ -272,6 +272,35 @@ struct ProjectedLandmark {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+/// voxel distribution
+struct Voxel {
+  Eigen::Vector3f voxel_center;
+  std::vector<Eigen::Vector3f> points;
+
+  // distribution
+  Eigen::Vector3d t;
+  Eigen::Matrix3d R;
+  Sophus::SE3f T;
+  Eigen::Vector3f sigma;
+  int N;
+};
+
+struct Vector3fCompare {
+  bool operator()(const Eigen::Vector3f& a, const Eigen::Vector3f& b) const {
+    if (a.x() < b.x()) return true;
+    if (a.x() > b.x()) return false;
+    if (a.y() < b.y()) return true;
+    if (a.y() > b.y()) return false;
+    if (a.z() < b.z()) return true;
+    return false;
+  }
+};
+
+/// pair of 3d point indices in global map and keypoint indices in local map
+using ICPPairs = std::vector<std::pair<int, int>>;
+
+using Voxels = std::map<Eigen::Vector3f, Voxel, Vector3fCompare>;
+
 using ProjectedLandmarkPtr = std::shared_ptr<ProjectedLandmark>;
 using ProjectedLandmarkConstPtr = std::shared_ptr<const ProjectedLandmark>;
 

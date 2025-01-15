@@ -30,12 +30,22 @@ target_link_libraries(test_ex4 gtest gtest_main Ceres::ceres opengv TBB::tbb)
 add_executable(test_ex5 src/test_ex5.cpp)
 target_link_libraries(test_ex5 gtest gtest_main Ceres::ceres opengv TBB::tbb)
 
+add_executable(test_icp src/test_icp.cpp)
+target_link_libraries(test_icp Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
 
+add_executable(test_icp_ceres src/test_icp_ceres.cpp)
+target_link_libraries(test_icp_ceres Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
+
+add_executable(test_icp_flann src/test_icp_flann.cpp)
+target_link_libraries(test_icp_flann Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
+
+add_executable(test_voxelization src/test_voxelization.cpp)
+target_link_libraries(test_voxelization Ceres::ceres TBB::tbb ${PCL_LIBRARIES})
 
 gtest_discover_tests(test_ex0 DISCOVERY_TIMEOUT 120)
-#gtest_discover_tests(test_ex1 DISCOVERY_TIMEOUT 120)
-#gtest_discover_tests(test_ex2 DISCOVERY_TIMEOUT 120)
-#add_test(NAME ex2_calibration_test COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_ex2.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-#gtest_discover_tests(test_ex3 DISCOVERY_TIMEOUT 120)
-#gtest_discover_tests(test_ex4 DISCOVERY_TIMEOUT 120)
-#gtest_discover_tests(test_ex5 DISCOVERY_TIMEOUT 120)
+gtest_discover_tests(test_ex1 DISCOVERY_TIMEOUT 120)
+gtest_discover_tests(test_ex2 DISCOVERY_TIMEOUT 120)
+add_test(NAME ex2_calibration_test COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_ex2.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+gtest_discover_tests(test_ex3 DISCOVERY_TIMEOUT 120)
+gtest_discover_tests(test_ex4 DISCOVERY_TIMEOUT 120)
+gtest_discover_tests(test_ex5 DISCOVERY_TIMEOUT 120)

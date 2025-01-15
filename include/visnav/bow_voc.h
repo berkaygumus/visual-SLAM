@@ -56,6 +56,12 @@ class BowVocabulary {
 
   inline void transformFeatureToWord(const TDescriptor& feature,
                                      WordId& word_id, WordValue& weight) const {
+    // std::cout << "size m_node " << m_nodes.size() << " " << m_nodes[0].weight
+    // << std::endl;
+    // std::cout << " children " << m_nodes[1].descriptor << " " <<
+    // m_nodes[2].descriptor << " " << m_nodes[3].descriptor <<std::endl; k =
+    // 10, loaded voc size = 1082074
+
     // TODO SHEET 3: propagate feature through the vocabulary tree stored in the
     // array m_nodes. The root node has id=0 (m_nodes[0]). The array
     // m_nodes[id].children stores ids (index in the array) of the children
@@ -65,9 +71,24 @@ class BowVocabulary {
     // feature and descriptor of the cluster centroid. Iterate until you reach
     // the leaf node. Save m_nodes[id].word_id and m_nodes[id].weight of the
     // leaf node to the corresponding variables.
-    UNUSED(feature);
-    UNUSED(word_id);
-    UNUSED(weight);
+    unsigned int parent_id = 0;
+    unsigned int child_id = 0;
+
+    while (!m_nodes[parent_id].isLeaf()) {
+      std::size_t dist = 256;
+      TDescriptor diff_vector;
+      for (auto child_node : m_nodes[parent_id].children) {
+        diff_vector = (m_nodes[child_node].descriptor) ^ feature;
+        if (diff_vector.count() < dist) {
+          dist = diff_vector.count();
+          child_id = m_nodes[child_node].id;
+        }
+      }
+      parent_id = child_id;
+    }
+
+    word_id = m_nodes[parent_id].word_id;
+    weight = m_nodes[parent_id].weight;
   }
 
   inline void transform(const std::vector<TDescriptor>& features,
@@ -81,7 +102,32 @@ class BowVocabulary {
     // TODO SHEET 3: transform the entire vector of features from an image to
     // the BoW representation (you can use transformFeatureToWord function). Use
     // L1 norm to normalize the resulting BoW vector.
-    UNUSED(features);
+    // std::cout << " bow vector " << v.size() << std::endl;
+
+    WordId word_id;
+    WordValue weight;
+    WordValue sum_weight = 0;
+    std::vector<WordId> key_of_pairs;
+
+    for (auto feature : features) {
+      transformFeatureToWord(feature, word_id, weight);
+      if (weight == 0) {
+        continue;
+      }
+      sum_weight += weight;
+      auto it = std::find(key_of_pairs.begin(), key_of_pairs.end(), word_id);
+
+      if (it != key_of_pairs.end()) {
+        v[std::distance(key_of_pairs.begin(), it)].second += weight;
+      } else {
+        key_of_pairs.push_back(word_id);
+        v.push_back(std::pair<WordId, WordValue>(word_id, weight));
+      }
+    }
+
+    for (auto& v_pair : v) {
+      v_pair.second /= sum_weight;
+    }
   }
 
   void save(const std::string& filename) const {

@@ -162,9 +162,38 @@ void computeAngles(const pangolin::ManagedImage<uint8_t>& img_raw,
 
     if (rotate_features) {
       // TODO SHEET 3: compute angle
-      UNUSED(img_raw);
-      UNUSED(cx);
-      UNUSED(cy);
+      // TODO: BETTER WAY instead of for loops
+      double m01 = 0;
+      double m10 = 0;
+      int x_dx, y_dy;
+      for (int dx = -15; dx < 16; dx++) {
+        for (int dy = -15; dy < 16; dy++) {
+          if (dx * dx + dy * dy <= 225) {
+            x_dx = cx + dx;
+            y_dy = cy + dy;
+            // std::cout << "x_dx " << x_dx << " " << y_dy << std::endl;
+            if (img_raw.InBounds(x_dx, y_dy)) {
+              // if(x_dx >= 0 && y_dy >= 0 && x_dx < img_raw.h && y_dy <
+              // img_raw.w ){ std::cout << "m10 " << m10 << " " << m01 <<
+              // std::endl;
+              m10 = m10 + dx * img_raw(x_dx, y_dy);
+              m01 = m01 + dy * img_raw(x_dx, y_dy);
+              // std::cout << "m10 " << m10 << " " << m01 << std::endl;
+              // std::cout << "intensity " <<
+              // unsigned(image.at<uint8_t>(x_dx,y_dy)) << std::endl; std::cout
+              // << "intensity img_raw " << unsigned(img_raw(x_dx,y_dy)) <<
+              // std::endl;
+
+              // std::cout << " in limit " << std::endl;
+              // std::cout << "x_dx " << x_dx << " " << y_dy << std::endl;
+              // std::cout << "dx " << dx << " " << dy << std::endl;
+            }
+          }
+        }
+      }
+      // std::cout << "m10 " << i << " " << m10 << " " << m01 << std::endl;
+      angle = atan2(m01, m10);
+      // std::cout << "angle " << i << " " << angle << std::endl;
     }
 
     kd.corner_angles[i] = angle;
@@ -185,10 +214,23 @@ void computeDescriptors(const pangolin::ManagedImage<uint8_t>& img_raw,
     const int cy = p[1];
 
     // TODO SHEET 3: compute descriptor
-    UNUSED(img_raw);
-    UNUSED(angle);
-    UNUSED(cx);
-    UNUSED(cy);
+    Eigen::Matrix2d Rot;
+    Eigen::Vector2d pa, pb, pa_prime, pb_prime;
+    Rot << cos(angle), -sin(angle), sin(angle), cos(angle);
+    // TODO: SHORT WAY?
+    for (size_t di = 0; di < 256; di++) {
+      pa << pattern_31_x_a[di], pattern_31_y_a[di];
+      pb << pattern_31_x_b[di], pattern_31_y_b[di];
+      pa_prime = Rot * pa;
+      pb_prime = Rot * pb;
+
+      if (img_raw(cx + round(pa_prime[0]), cy + round(pa_prime[1])) <
+          img_raw(cx + round(pb_prime[0]), cy + round(pb_prime[1]))) {
+        descriptor[di] = 1;
+      } else {
+        descriptor[di] = 0;
+      }
+    }
 
     kd.corner_descriptors[i] = descriptor;
   }
@@ -209,11 +251,113 @@ void matchDescriptors(const std::vector<std::bitset<256>>& corner_descriptors_1,
   matches.clear();
 
   // TODO SHEET 3: match features
-  UNUSED(corner_descriptors_1);
-  UNUSED(corner_descriptors_2);
-  UNUSED(matches);
-  UNUSED(threshold);
-  UNUSED(dist_2_best);
+  // !!! VERY BAD IMPLEMENTATION TODO: CHANGE
+  std::vector<std::pair<int, int>> matches1, matches2;
+  for (size_t descriptor1 = 0; descriptor1 < corner_descriptors_1.size();
+       descriptor1++) {
+    std::bitset<256> diff_vector;
+    int best_match = -1;
+    // int second_match;
+    size_t dist_best_match = 256;
+    size_t dist_second_match = 256;
+
+    for (size_t descriptor2 = 0; descriptor2 < corner_descriptors_2.size();
+         descriptor2++) {
+      // std::cout << "descriptor1 " << corner_descriptors_1[descriptor1] <<
+      // std::endl; std::cout << "descriptor2 " <<
+      // corner_descriptors_2[descriptor2] << std::endl;
+      diff_vector =
+          corner_descriptors_1[descriptor1] ^ corner_descriptors_2[descriptor2];
+      // std::cout << "diff_vector " << diff_vector << " " <<
+      // diff_vector.count() << std::endl;
+      if (diff_vector.count() < dist_best_match) {
+        // second_match = best_match;
+        dist_second_match = dist_best_match;
+
+        best_match = int(descriptor2);
+        dist_best_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+
+      } else if (diff_vector.count() < dist_second_match) {
+        // second_match = int(descriptor2);
+        dist_second_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+      }
+    }
+
+    // std::cout << "dist_best_match " << dist_best_match << " "
+    //          << dist_second_match << std::endl;
+
+    if (int(dist_best_match) < threshold &&
+        dist_2_best * int(dist_best_match) <= int(dist_second_match)) {
+      // std::cout << "added " << dist_best_match << " " << dist_second_match
+      //          << " dist_2_best " << dist_2_best << " threshold " <<
+      //          threshold
+      //          << std::endl;
+      matches1.push_back(std::pair<int, int>(int(descriptor1), best_match));
+    }
+  }
+
+  for (size_t descriptor2 = 0; descriptor2 < corner_descriptors_2.size();
+       descriptor2++) {
+    std::bitset<256> diff_vector;
+    int best_match = -1;
+    // int second_match;
+    size_t dist_best_match = 256;
+    size_t dist_second_match = 256;
+
+    for (size_t descriptor1 = 0; descriptor1 < corner_descriptors_1.size();
+         descriptor1++) {
+      // std::cout << "descriptor1 " << corner_descriptors_1[descriptor1] <<
+      // std::endl; std::cout << "descriptor2 " <<
+      // corner_descriptors_2[descriptor2] << std::endl;
+      diff_vector =
+          corner_descriptors_1[descriptor1] ^ corner_descriptors_2[descriptor2];
+      // std::cout << "diff_vector " << diff_vector << " " <<
+      // diff_vector.count() << std::endl;
+      if (diff_vector.count() < dist_best_match) {
+        // second_match = best_match;
+        dist_second_match = dist_best_match;
+
+        best_match = int(descriptor1);
+        dist_best_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+
+      } else if (diff_vector.count() < dist_second_match) {
+        // second_match = int(descriptor1);
+        dist_second_match = diff_vector.count();
+
+        // std::cout << "dist_best_match " << dist_best_match << " "
+        //          << dist_second_match << std::endl;
+      }
+    }
+
+    // std::cout << "dist_best_match " << dist_best_match << " "
+    //          << dist_second_match << std::endl;
+
+    if (int(dist_best_match) < threshold &&
+        dist_2_best * int(dist_best_match) <= int(dist_second_match)) {
+      // std::cout << "added " << dist_best_match << " " << dist_second_match
+      //          << " dist_2_best " << dist_2_best << " threshold " <<
+      //          threshold
+      //          << std::endl;
+      matches2.push_back(std::pair<int, int>(best_match, int(descriptor2)));
+    }
+  }
+
+  for (auto match1 : matches1) {
+    for (auto match2 : matches2) {
+      if (match1.first == match2.first && match1.second == match2.second) {
+        matches.push_back(std::pair<int, int>(match1.first, match1.second));
+      }
+    }
+  }
 }
 
 }  // namespace visnav

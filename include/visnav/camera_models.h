@@ -84,14 +84,9 @@ class PinholeCamera : public AbstractCamera<Scalar> {
 
     Vec2 res;
 
-    // TODO SHEET 2: implement camera model
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(x);
-    UNUSED(y);
-    UNUSED(z);
+    // TODO SHEET 2: OK implement camera model
+    res[0] = fx * x / z + cx;
+    res[1] = fy * y / z + cy;
 
     return res;
   }
@@ -102,15 +97,16 @@ class PinholeCamera : public AbstractCamera<Scalar> {
     const Scalar& cx = param[2];
     const Scalar& cy = param[3];
 
+    const Scalar& u = p[0];
+    const Scalar& v = p[1];
+
     Vec3 res;
 
-    // TODO SHEET 2: implement camera model
-    UNUSED(p);
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-
+    // TODO SHEET 2: OK implement camera model
+    res[0] = (u - cx) / fx;
+    res[1] = (v - cy) / fy;
+    res[2] = Scalar(1);
+    res = res.normalized();
     return res;
   }
 
@@ -168,15 +164,11 @@ class ExtendedUnifiedCamera : public AbstractCamera<Scalar> {
     Vec2 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(alpha);
-    UNUSED(beta);
-    UNUSED(x);
-    UNUSED(y);
-    UNUSED(z);
+    const Scalar& d = sqrt(beta * (x * x + y * y) + z * z);
+    const Scalar& denominator = alpha * d + (Scalar(1) - alpha) * z;
+
+    res[0] = fx * x / denominator + cx;
+    res[1] = fy * y / denominator + cy;
 
     return res;
   }
@@ -189,16 +181,27 @@ class ExtendedUnifiedCamera : public AbstractCamera<Scalar> {
     const Scalar& alpha = param[4];
     const Scalar& beta = param[5];
 
+    const Scalar& u = p[0];
+    const Scalar& v = p[1];
+
     Vec3 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(p);
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(alpha);
-    UNUSED(beta);
+    const Scalar& mx = (u - cx) / fx;
+    const Scalar& my = (v - cy) / fy;
+    const Scalar& r_square = mx * mx + my * my;
+
+    const Scalar& mz =
+        (Scalar(1) - beta * alpha * alpha * r_square) /
+        (alpha * sqrt(Scalar(1) -
+                      (Scalar(2) * alpha - Scalar(1)) * beta * r_square) +
+         (Scalar(1) - alpha));
+
+    res[0] = mx;
+    res[1] = my;
+    res[2] = mz;
+
+    res = res.normalized();
 
     return res;
   }
@@ -253,15 +256,14 @@ class DoubleSphereCamera : public AbstractCamera<Scalar> {
     Vec2 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(xi);
-    UNUSED(alpha);
-    UNUSED(x);
-    UNUSED(y);
-    UNUSED(z);
+    const Scalar& d1 = sqrt(x * x + y * y + z * z);
+    const Scalar& d2 = sqrt(x * x + y * y + (xi * d1 + z) * (xi * d1 + z));
+
+    const Scalar& denominator =
+        alpha * d2 + (Scalar(1) - alpha) * (xi * d1 + z);
+
+    res[0] = fx * x / denominator + cx;
+    res[1] = fy * y / denominator + cy;
 
     return res;
   }
@@ -274,16 +276,28 @@ class DoubleSphereCamera : public AbstractCamera<Scalar> {
     const Scalar& xi = param[4];
     const Scalar& alpha = param[5];
 
+    const Scalar& u = p[0];
+    const Scalar& v = p[1];
+
     Vec3 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(p);
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(xi);
-    UNUSED(alpha);
+
+    const Scalar& mx = (u - cx) / fx;
+    const Scalar& my = (v - cy) / fy;
+    const Scalar& r_square = mx * mx + my * my;
+    const Scalar& mz =
+        (Scalar(1) - alpha * alpha * r_square) /
+        (alpha * sqrt(Scalar(1) - (Scalar(2) * alpha - Scalar(1)) * r_square) +
+         Scalar(1) - alpha);
+
+    const Scalar& multiplier =
+        (mz * xi + sqrt(mz * mz + (Scalar(1) - xi * xi) * r_square)) /
+        (mz * mz + r_square);
+
+    res[0] = multiplier * mx;
+    res[1] = multiplier * my;
+    res[2] = multiplier * mz - xi;
     return res;
   }
 
@@ -341,19 +355,72 @@ class KannalaBrandt4Camera : public AbstractCamera<Scalar> {
     Vec2 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
-    UNUSED(k1);
-    UNUSED(k2);
-    UNUSED(k3);
-    UNUSED(k4);
-    UNUSED(x);
-    UNUSED(y);
-    UNUSED(z);
+    const Scalar& r = sqrt(x * x + y * y);
+    const Scalar& theta = atan2(r, z);
+    const Scalar& d_theta =
+        theta + k1 * Scalar(theta * theta * theta) +
+        k2 * Scalar(theta * theta * theta * theta * theta) +
+        k3 * Scalar(theta * theta * theta * theta * theta * theta * theta) +
+        k4 * Scalar(theta * theta * theta * theta * theta * theta * theta *
+                    theta * theta);
+    if (r == Scalar(0)) {
+      res[0] = cx;
+      res[1] = cy;
+    } else {
+      res[0] = fx * d_theta * x / r + cx;
+      res[1] = fy * d_theta * y / r + cy;
+    }
 
+    // std::cout << "projection result ru " << d_theta << " theta " << theta <<
+    // std::endl;
     return res;
+  }
+
+  Scalar calculate_f_theta(Scalar& theta, const Scalar& ru) const {
+    const Scalar& k1 = param[4];
+    const Scalar& k2 = param[5];
+    const Scalar& k3 = param[6];
+    const Scalar& k4 = param[7];
+    Scalar f_theta =
+        theta + k1 * Scalar(theta * theta * theta) +
+        k2 * Scalar(theta * theta * theta * theta * theta) +
+        k3 * Scalar(theta * theta * theta * theta * theta * theta * theta) +
+        k4 * Scalar(theta * theta * theta * theta * theta * theta * theta *
+                    theta * theta) -
+        ru;
+    return f_theta;
+  }
+
+  Scalar calculate_f_theta_derivative(Scalar& theta) const {
+    const Scalar& k1 = param[4];
+    const Scalar& k2 = param[5];
+    const Scalar& k3 = param[6];
+    const Scalar& k4 = param[7];
+    Scalar f_theta_derivative =
+        Scalar(1) + Scalar(3) * k1 * Scalar(theta * theta) +
+        Scalar(5) * k2 * Scalar(theta * theta * theta * theta) +
+        Scalar(7) * k3 * Scalar(theta * theta * theta * theta * theta * theta) +
+        Scalar(9) * k4 *
+            Scalar(theta * theta * theta * theta * theta * theta * theta *
+                   theta);
+    return f_theta_derivative;
+  }
+
+  Scalar calculate_root_f(const Scalar& ru) const {
+    Scalar root = Scalar(0.1);
+    int n = 0;
+    // std::cout << "ru: " << ru << std::endl;
+    while (abs(calculate_f_theta(root, ru)) > Scalar(0.001) || n < 10) {
+      if (calculate_f_theta_derivative(root) == Scalar(0)) {
+        // std::cout << "zero derivative" << std::endl;
+        break;
+      }
+      root = root -
+             calculate_f_theta(root, ru) / calculate_f_theta_derivative(root);
+      // std::cout << n << " loop root " << root << std::endl;
+      n++;
+    }
+    return root;
   }
 
   Vec3 unproject(const Vec2& p) const {
@@ -362,14 +429,35 @@ class KannalaBrandt4Camera : public AbstractCamera<Scalar> {
     const Scalar& cx = param[2];
     const Scalar& cy = param[3];
 
+    const Scalar& u = p[0];
+    const Scalar& v = p[1];
+
     Vec3 res;
 
     // TODO SHEET 2: implement camera model
-    UNUSED(p);
-    UNUSED(fx);
-    UNUSED(fy);
-    UNUSED(cx);
-    UNUSED(cy);
+    const Scalar& mx = (u - cx) / fx;
+    const Scalar& my = (v - cy) / fy;
+    const Scalar& ru = sqrt(mx * mx + my * my);
+    // std::cout << mx << " " << my << " " << mx * mx + my * my << " "
+    //          << sqrt(mx * mx + my * my) << " " << ru << std::endl;
+    // f(theta) =  d(theta)  - ru
+    // f'(theta) = d'(theta)
+    // we are looking for the roots of f function
+
+    if (ru == Scalar(0)) {
+      res[0] = Scalar(0);
+      res[1] = Scalar(0);
+      res[2] = Scalar(1);
+      return res;
+    }
+
+    Scalar theta = calculate_root_f(ru);
+    // std::cout << "unproject result ru " << ru << " theta " << theta <<
+    // std::endl; const Scalar &theta = 0;
+
+    res[0] = sin(theta) * mx / ru;
+    res[1] = sin(theta) * my / ru;
+    res[2] = cos(theta);
 
     return res;
   }
