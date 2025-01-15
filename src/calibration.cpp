@@ -319,9 +319,9 @@ void load_data(const std::string& dataset_path) {
 
     calib_images[kv.first] = std::move(img);
 
-    if (calib_init_poses.find(kv.first) != calib_init_poses.end() &&
+    if (calib_init_poses.find(kv.first) != calib_init_poses.end() && 
         kv.first.cam_id == 0) {
-      Sophus::SE3d pose = calib_init_poses[kv.first].T_a_c;
+      Sophus::SE3d pose(calib_init_poses[kv.first].T_a_c.matrix());
       vec_T_w_i[kv.first.frame_id] = pose;
     }
   }
